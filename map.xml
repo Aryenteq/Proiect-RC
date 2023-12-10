@@ -1,0 +1,31 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+<graph>
+    <edge>
+        <from>0</from>
+        <to>1</to>
+        <name>Strada exemplu</name>
+        <lenght>100</lenght>
+        <speedlimit>50</speedlimit>
+    </edge>
+    <edge>
+        <from>0</from>
+        <to>2</to>
+        <name>Strada Lapusneanu</name>
+        <lenght>50</lenght>
+        <speedlimit>50</speedlimit>
+    </edge>
+    <edge>
+        <from>1</from>
+        <to>2</to>
+        <name>Strada Soarelui</name>
+        <lenght>1000</lenght>
+        <speedlimit>130</speedlimit>
+    </edge>
+    <edge>
+        <from>2</from>
+        <to>3</to>
+        <name>Strada Mihai Viteazu</name>
+        <lenght>10</lenght>
+        <speedlimit>100</speedlimit>
+    </edge>
+</graph> 
