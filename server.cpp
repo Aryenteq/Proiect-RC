@@ -11,19 +11,19 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 // #include <errno.h>
-#include <cerrno> /* for cpp */
 #include <unistd.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <signal.h>
 #include <pthread.h>
-#include <stdint.h> // intptr_t
 
+/* Added */
+#include <stdint.h> // intptr_t
+#include <cerrno> /* for cpp errors */
 #include <iostream> // cerr
 #include <vector>
 #include <string>
-#include <atomic>
 
 
 using namespace std;
@@ -44,7 +44,6 @@ typedef struct thData{
 
 static void *treat(void *); /* functia executata de fiecare thread ce realizeaza comunicarea cu clientii */
 void raspunde(void *);
-std::atomic<bool> shouldStop(false);
 
 int main ()
 {
@@ -63,7 +62,7 @@ int main ()
     {
       std::cerr << "[server]Eroare la socket(): " << strerror(errno) << std::endl;
       //perror ("[server]Eroare la socket().\n");
-      //return errno;
+      return errno;
     }
   /* utilizarea optiunii SO_REUSEADDR */
   int on=1;
@@ -86,15 +85,15 @@ int main ()
     {
       std::cerr << "[server]Eroare la bind(): " << strerror(errno) << std::endl;
       //perror ("[server]Eroare la bind().\n");
-      //return errno;
+      return errno;
     }
 
   /* punem serverul sa asculte daca vin clienti sa se conecteze */
   if (listen (sd, 2) == -1)
     {
-      std::cerr << "[server]Eroare la listen): " << strerror(errno) << std::endl;
+      std::cerr << "[server]Eroare la listen(): " << strerror(errno) << std::endl;
       //perror ("[server]Eroare la listen().\n");
-      //return errno;
+      return errno;
     }
   /* servim in mod concurent clientii...folosind thread-uri */
   while (1)
@@ -116,13 +115,13 @@ int main ()
 	    }
 	
         /* s-a realizat conexiunea, se astepta mesajul */
-    
-	// int idThread; //id-ul threadului
-	// int cl; //descriptorul intors de accept
 
 	td=(struct thData*)malloc(sizeof(struct thData));	
 	td->idThread=i++;
 	td->cl=client;
+  if(i>shouldStop.size())
+    shouldStop.push_back(false);
+  connectedIDs.push_back(td->idThread);
 
 	pthread_create(&th[i], NULL, &treat, td);	      	
 	}//while    
@@ -138,7 +137,8 @@ static void *treat(void *arg)
     fflush(stdout);
     pthread_detach(pthread_self());
 
-    while (!shouldStop)
+   // while (!shouldStop)
+    while(!shouldStop[tdL.idThread])
     {
         raspunde((struct thData *)arg);
     }
@@ -150,111 +150,37 @@ static void *treat(void *arg)
 
 void raspunde(void *arg)
 {
-    while (!shouldStop)
-    {
-        int nr, i = 0;
-        struct thData tdL;
-        tdL = *((struct thData *)arg);
-        if (read(tdL.cl, &nr, sizeof(int)) <= 0)
-        {
-            printf("[Thread %d]\n", tdL.idThread);
-            std::cerr << "[server]Eroare la read() de la client: " << strerror(errno) << std::endl;
-            shouldStop = true; // Signal to stop processing
-            return;
-        }
-        printf("[Thread %d]Mesajul a fost receptionat...%d\n", tdL.idThread, nr);
+  int i = 0;
+  char buf[100];
+  struct thData tdL;
+  tdL = *((struct thData *)arg);
 
-        /*pregatim mesajul de raspuns */
-        nr++;
-        printf("[Thread %d]Trimitem mesajul inapoi...%d\n", tdL.idThread, nr);
+  int bytesRead = read(tdL.cl, &buf, sizeof(buf));
 
-        /* returnam mesajul clientului */
-        if (write(tdL.cl, &nr, sizeof(int)) <= 0)
-        {
-            printf("[Thread %d] ", tdL.idThread);
-            std::cerr << "[Thread]Eroare la write() catre client: " << strerror(errno) << std::endl;
-            shouldStop = true; // Signal to stop processing
-            return;
-        }
-        else
-            printf("[Thread %d]Mesajul a fost trasmis cu succes.\n", tdL.idThread);
-    }
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-
-static void *treat(void * arg)
-{
-		struct thData tdL; 
-		tdL= *((struct thData*)arg);	
-		printf ("[thread]- %d - Asteptam mesajul...\n", tdL.idThread);
-		fflush (stdout);		 
-		pthread_detach(pthread_self());		
-
-    //while (1)
-    //{
-        //if (!raspunde((struct thData *)arg))
-        //    break; // Exit the loop if raspunde returns false (indicating client wants to close)
-        raspunde((struct thData*)arg);
-    //}
-		//raspunde((struct thData*)arg);
-		// am terminat cu acest client, inchidem conexiunea
-		//close ((intptr_t)arg);
-		return(NULL);	
-};
-
-
-void raspunde(void *arg)
-{
-  int nr, i=0;
-	struct thData tdL; 
-	tdL= *((struct thData*)arg);
-	if (read (tdL.cl, &nr,sizeof(int)) <= 0)
-	{
-		printf("[Thread %d]\n",tdL.idThread);
+  // Client was closed in unnatural ways - Ctrl+C, crash, etc
+  if(bytesRead == 0)
+  {
+    closeClient(buf, tdL.idThread);
+    return;
+  }
+  else if (bytesRead < 0)
+  {
     std::cerr << "[server]Eroare la read() de la client: " << strerror(errno) << std::endl;
-		//perror ("Eroare la read() de la client.\n");
-	}
-	printf ("[Thread %d]Mesajul a fost receptionat...%d\n",tdL.idThread, nr);
-		      
-	// pregatim mesajul de raspuns
-	nr++;      
-	printf("[Thread %d]Trimitem mesajul inapoi...%d\n",tdL.idThread, nr);
-		      
-		      
-	// returnam mesajul clientului
-	 if (write (tdL.cl, &nr, sizeof(int)) <= 0)
-		{
-		 printf("[Thread %d] ",tdL.idThread);
-     std::cerr << "[Thread]Eroare la write() catre client: " << strerror(errno) << std::endl;
-		 //perror ("[Thread]Eroare la write() catre client.\n");
-		}
-	else
-		printf ("[Thread %d]Mesajul a fost trasmis cu succes.\n",tdL.idThread);	
-}
+    return;
+  }
 
-*/
+  printf("[Thread %d]Mesajul a fost receptionat...%s\n", tdL.idThread, buf);
+  fflush (stdout);
+  processCommand(buf, tdL.idThread);
+  printf("[Thread %d]Trimitem mesajul inapoi...%s\n", tdL.idThread, buf);
+
+  /* returnam mesajul clientului */
+  if (write(tdL.cl, &buf, sizeof(buf)) <= 0)
+  {
+    printf("[Thread %d] ", tdL.idThread);
+    std::cerr << "[Thread]Eroare la write() catre client: " << strerror(errno) << std::endl;
+    return;
+  }
+  else
+    printf("[Thread %d]Mesajul a fost trasmis cu succes.\n", tdL.idThread);
+}
