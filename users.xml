@@ -1,0 +1,27 @@
+ <?xml version="1.0" encoding="UTF-8"?>
+<users>
+    <user>
+        <username>admin</username>
+        <password>test</password>
+        <hazards>false</hazards>
+        <weather>false</weather>
+        <speedlimit>false</speedlimit>
+        <admin>true</admin>
+    </user>
+    <user>
+        <username>test</username>
+        <password>test</password>
+        <hazards>false</hazards>
+        <weather>false</weather>
+        <speedlimit>false</speedlimit>
+        <admin>false</admin>
+    </user>
+    <user>
+        <nuserame>cri</username>
+        <password>test</password>
+        <hazards>false</hazards>
+        <weather>false</weather>
+        <speedlimit>false</speedlimit>
+        <admin>false</admin>
+    </user>
+</users> 

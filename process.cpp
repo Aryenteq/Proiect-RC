@@ -1,26 +1,63 @@
 #include <algorithm> // remove_if
 
-std::vector<bool> shouldStop(0, false);
-std::vector<int> connectedIDs;
+std::vector<int> activeThreads;
+struct userInformation
+{
+  bool shouldStop;
+  bool showHazards;
+  bool showWeather;
+  bool showSpeedLimit;
+  bool admin;
+  char* connectedUsername; // Deallocation not taken care of! Could create problems?
+  //std::string connectedUsername;
+};
+
+typedef struct thData{
+	int idThread; //id-ul thread-ului tinut in evidenta de acest program
+	int cl; //descriptorul intors de accept
+  userInformation userInfo;
+}thData;
+
+#include "users.cpp"
 
 
-void option1(char*, int);
-void option2(char*, int);
-void closeClient(char*, int);
-void defaultOption(char*, int);
+void initialiseThread(thData *td, int &i, int &client)
+{
+    td->idThread=i++;
+	td->cl=client;
+    td->userInfo.shouldStop = false;
+    td->userInfo.showHazards = false;
+    td->userInfo.showWeather = false;
+    td->userInfo.showSpeedLimit = false;
+    td->userInfo.admin = false;
+    td->userInfo.connectedUsername = nullptr;
+    //td->userInfo.connectedUsername = "";
 
-void processCommand(char* buf, const int &id) {
+    activeThreads.push_back(td->idThread);
+}
+
+
+void logIn(char*, thData&);
+void signUp(char*, thData&);
+void showActiveThreads(char*, thData&);
+void closeClient(char*, thData&);
+void defaultOption(char*, thData&);
+
+void processCommand(char* buf, thData tdL) {
     // Define an array of function pointers
-    void (*functionArray[])(char*, int) = {option1, option2, closeClient, defaultOption};
-    const char* inputPossibilities[] = {"test", "test2", "exit"};
+    void (*functionArray[])(char*, thData&) = {logIn, signUp, showActiveThreads, closeClient, defaultOption};
+    const char* inputPossibilities[] = {"log in", "sing up", "threads", "exit"};
 
     size_t noOfFunctions = sizeof(functionArray) / sizeof(functionArray[0]);
 
     // Find the index corresponding to the input string
     int index;
     bool foundCommand = false;
+    
     for (index = 0; index < noOfFunctions; index++)
-        if (strcmp(buf, inputPossibilities[index]) == 0)
+        if ((index <= 1 && strncmp(buf, inputPossibilities[index], strlen(inputPossibilities[index])) == 0 &&
+        strlen(buf) > strlen(inputPossibilities[index]) && buf[strlen(inputPossibilities[index])] == ' ') ||
+    (index > 1 && strcmp(buf, inputPossibilities[index]) == 0))
         {
             foundCommand = true;
             break;
@@ -29,31 +66,79 @@ void processCommand(char* buf, const int &id) {
     // No match was found => Invalid command
     if(!foundCommand)
         index--;
-    (*functionArray[index])(buf, id);
+    
+    (*functionArray[index])(buf, tdL);
 }
 
-void option1(char* buf, int id) {
-    strcpy(buf, "Primul test");
+void logIn(char* buf, thData &tdL) 
+{
+    strcpy(buf, buf+7); // Get rid of "log in "
+    char* p = strtok(buf, " ");
+    if(p == nullptr)
+    {
+        strcpy(buf, "Sintax: log in <name> <password>");
+        return;
+    }
+    else
+    {
+        std::string username(p);
+        p = strtok(nullptr, " ");
+        if(p == nullptr)
+        {
+            strcpy(buf, "Sintax: log in <name> <password>");
+            return;
+        }
+        else
+        {
+            std::string password(p);
+            connectUser(buf, tdL, username, password);
+        } 
+    }
 }
 
-void option2(char* buf, int id) {
-    for(int i=0; i<connectedIDs.size(); i++)
-        printf("%d ", connectedIDs[i]);
+void signUp(char* buf, thData &tdL)
+{
+    strcpy(buf, buf+9); // Get rid of "sign up "
+    char* p = strtok(buf, " ");
+    if(p == nullptr)
+    {
+        strcpy(buf, "Sintax: sign up <name> <password>");
+        return;
+    }
+    else
+    {
+        std::string username(p);
+        p = strtok(nullptr, " ");
+        if(p == nullptr)
+        {
+            strcpy(buf, "Sintax: sign up <name> <password>");
+            return;
+        }
+        else
+        {
+            std::string password(p);
+            createUser(buf, tdL, username, password);
+            connectUser(buf, tdL, username, password);
+        } 
+    }
+}
+
+void showActiveThreads(char* buf, thData &tdL) {
+    for(int i=0; i<activeThreads.size(); i++)
+        printf("%d ", activeThreads[i]);
     strcpy(buf, "Al doilea test");
 }
 
-//std::atomic<bool> shouldStop(false);
-void closeClient(char* buf, int id) {
-    //shouldStop[0].store(true);
-    shouldStop[id]=true;
+void closeClient(char* buf, thData &tdL) {
+    tdL.userInfo.shouldStop=true;
 
-    // Remove the element from connectedIDs vector
-    auto newEnd = std::remove(connectedIDs.begin(), connectedIDs.end(), id);
-    connectedIDs.erase(newEnd, connectedIDs.end());
-    //connectedIDs.shrink_to_fit();
+    // Remove the element from activeThreads vector
+    auto newEnd = std::remove(activeThreads.begin(), activeThreads.end(), tdL.idThread);
+    activeThreads.erase(newEnd, activeThreads.end());
+    //activeThreads.shrink_to_fit();
     strcpy(buf, "Closing");
 }
 
-void defaultOption(char* buf, int id) {
+void defaultOption(char* buf, thData &tdL) {
     strcpy(buf, "Invalid command");
 }

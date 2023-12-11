@@ -5,7 +5,7 @@
 void Graph::addEdge(int source, int destination, int length, std::string streetName, int speedLimit)
 {
     if(source>destination)
-        swap(source,destination);
+        std::swap(source,destination);
     if(destination>this->vertices)
     {
         this->vertices=destination+1;

@@ -1,12 +1,3 @@
-/* servTCPConcTh2.c - Exemplu de server TCP concurent care deserveste clientii
-   prin crearea unui thread pentru fiecare client.
-   Asteapta un numar de la clienti si intoarce clientilor numarul incrementat.
-	Intoarce corect identificatorul din program al thread-ului.
-  
-   
-   Autor: Lenuta Alboaie  <adria@info.uaic.ro> (c)
-*/
-
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -36,11 +27,6 @@ using namespace std;
 
 /* codul de eroare returnat de anumite apeluri */
 //extern int errno;
-
-typedef struct thData{
-	int idThread; //id-ul thread-ului tinut in evidenta de acest program
-	int cl; //descriptorul intors de accept
-}thData;
 
 static void *treat(void *); /* functia executata de fiecare thread ce realizeaza comunicarea cu clientii */
 void raspunde(void *);
@@ -117,12 +103,8 @@ int main ()
         /* s-a realizat conexiunea, se astepta mesajul */
 
 	td=(struct thData*)malloc(sizeof(struct thData));	
-	td->idThread=i++;
-	td->cl=client;
-  if(i>shouldStop.size())
-    shouldStop.push_back(false);
-  connectedIDs.push_back(td->idThread);
-
+  
+  initialiseThread(td, i, client);
 	pthread_create(&th[i], NULL, &treat, td);	      	
 	}//while    
 };
@@ -137,8 +119,8 @@ static void *treat(void *arg)
     fflush(stdout);
     pthread_detach(pthread_self());
 
-   // while (!shouldStop)
-    while(!shouldStop[tdL.idThread])
+    //while(!shouldStop[tdL.idThread])
+    while(!tdL.userInfo.shouldStop)
     {
         raspunde((struct thData *)arg);
     }
@@ -160,7 +142,7 @@ void raspunde(void *arg)
   // Client was closed in unnatural ways - Ctrl+C, crash, etc
   if(bytesRead == 0)
   {
-    closeClient(buf, tdL.idThread);
+    closeClient(buf, tdL);
     return;
   }
   else if (bytesRead < 0)
@@ -171,7 +153,7 @@ void raspunde(void *arg)
 
   printf("[Thread %d]Mesajul a fost receptionat...%s\n", tdL.idThread, buf);
   fflush (stdout);
-  processCommand(buf, tdL.idThread);
+  processCommand(buf, tdL);
   printf("[Thread %d]Trimitem mesajul inapoi...%s\n", tdL.idThread, buf);
 
   /* returnam mesajul clientului */
