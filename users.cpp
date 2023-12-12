@@ -1,11 +1,8 @@
-char* boolToChar(bool input)
+// If you remove const you get a segmentation fault
+// Took 3 hours to find the problem
+const char* boolToChar(bool input)
 {
-    char* result;
-    if(input==true)
-        strcpy(result, "true");
-    else
-        strcpy(result, "false");
-    return result;
+    return input ? "true" : "false";
 }
 
 void connectUser(char* buf, thData &tdL, std::string username, std::string password)
@@ -69,36 +66,73 @@ void connectUser(char* buf, thData &tdL, std::string username, std::string passw
 }
 
 
-void createUser(char* buf, thData &tdL, std::string username, std::string password)
+bool isUsernameTaken(rapidxml::xml_node<> *root, const std::string &username) {
+    for (rapidxml::xml_node<> *userNode = root->first_node("user"); userNode; userNode = userNode->next_sibling("user")) {
+        rapidxml::xml_node<> *existingUsernameNode = userNode->first_node("username");
+        if (existingUsernameNode && existingUsernameNode->value()) {
+            if (strcmp(existingUsernameNode->value(), username.c_str()) == 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+
+void createUser(char* buf, thData &tdL, std::string username, std::string password, int &errors)
 {
-    rapidxml::file<> xmlFile("users.xml");
-    rapidxml::xml_document<> doc;
-    doc.parse<0>(xmlFile.data());
-    // Check if usernames already taken
-    // Create a new user node
-    rapidxml::xml_node<>* newUserNode = doc.allocate_node(rapidxml::node_element, "user");
+    //printf("Aaaa %s", tdL.userInfo.connectedUsername);
+    // If a user is already logged in on this thread
+    if(tdL.userInfo.connectedUsername!=nullptr)
+    //if(!tdL.userInfo.connectedUsername.empty())
+    {
+        strcpy(buf, "You are already logged in. Can't create another account.");
+        errors = 1;
+        return;
+    }
 
-    rapidxml::xml_node<>* usernameNode = doc.allocate_node(rapidxml::node_element, "username", doc.allocate_string(username.c_str()));
-    rapidxml::xml_node<>* passwordNode = doc.allocate_node(rapidxml::node_element, "password", doc.allocate_string(password.c_str()));
-    rapidxml::xml_node<>* hazardsNode = doc.allocate_node(rapidxml::node_element, "hazards", doc.allocate_string(boolToChar(tdL.userInfo.showHazards)));
-    rapidxml::xml_node<>* weatherNode = doc.allocate_node(rapidxml::node_element, "weather", doc.allocate_string(boolToChar(tdL.userInfo.showWeather)));
-    rapidxml::xml_node<>* speedLimitNode = doc.allocate_node(rapidxml::node_element, "speedlimit", doc.allocate_string(boolToChar(tdL.userInfo.showSpeedLimit)));
+    try 
+    {
+        rapidxml::file<> xmlFile("users.xml");
+        rapidxml::xml_document<> doc;
+        doc.parse<0>(xmlFile.data());
 
-    char* adminStatus;
-    if(username == "admin")
-        strcpy(adminStatus, "true");
-    else
-        strcpy(adminStatus, "false");
-    rapidxml::xml_node<>* adminNode = doc.allocate_node(rapidxml::node_element, "admin", doc.allocate_string(adminStatus));
+        // Check if username is already taken
+        if (isUsernameTaken(doc.first_node("users"), username)) {
+            strcpy(buf, "Username already taken. Choose smth else");
+            errors = 1;
+            return;
+        }
+    
+        rapidxml::xml_node<>* newUserNode = doc.allocate_node(rapidxml::node_element, "user");
+    
+        rapidxml::xml_node<>* usernameNode = doc.allocate_node(rapidxml::node_element, "username", doc.allocate_string(username.c_str()));
+        rapidxml::xml_node<>* passwordNode = doc.allocate_node(rapidxml::node_element, "password", doc.allocate_string(password.c_str()));
+        rapidxml::xml_node<>* hazardsNode = doc.allocate_node(rapidxml::node_element, "hazards", doc.allocate_string(boolToChar(tdL.userInfo.showHazards)));
+        rapidxml::xml_node<>* weatherNode = doc.allocate_node(rapidxml::node_element, "weather", doc.allocate_string(boolToChar(tdL.userInfo.showWeather)));
+        rapidxml::xml_node<>* speedLimitNode = doc.allocate_node(rapidxml::node_element, "speedlimit", doc.allocate_string(boolToChar(tdL.userInfo.showSpeedLimit)));
+        char* adminStatus = doc.allocate_string(username == "admin" ? "true" : "false");
+        rapidxml::xml_node<>* adminNode = doc.allocate_node(rapidxml::node_element, "admin", adminStatus);
+    
+        // Append child nodes
+        newUserNode->append_node(usernameNode);
+        newUserNode->append_node(passwordNode);
+        newUserNode->append_node(hazardsNode);
+        newUserNode->append_node(weatherNode);
+        newUserNode->append_node(speedLimitNode);
+        newUserNode->append_node(adminNode);
 
-    // Append child nodes to the new user node
-    newUserNode->append_node(usernameNode);
-    newUserNode->append_node(passwordNode);
-    newUserNode->append_node(hazardsNode);
-    newUserNode->append_node(weatherNode);
-    newUserNode->append_node(speedLimitNode);
-    newUserNode->append_node(adminNode);
+        // Append to the root
+        doc.first_node()->append_node(newUserNode);
 
-    // Append to the root
-    doc.first_node()->append_node(newUserNode);
+        // File doesn't change at the moment, TODO
+        
+        //std::ofstream file("users.xml");
+        //rapidxml::print(std::ostream_iterator<char>(file), doc, 0);
+        //file.close();
+    } 
+    catch (const std::exception& e) 
+    {
+        std::cerr << "Exception: " << e.what() << std::endl;
+    }
 }

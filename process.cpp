@@ -46,7 +46,6 @@ void defaultOption(char*, thData&);
 
 void processCommand(char* buf, thData &tdL) 
 {
-    std::cout<<tdL.idThread;
     // Define an array of function pointers
     void (*functionArray[])(char*, thData&) = {logIn, 
                                                 signUp, 
@@ -61,7 +60,6 @@ void processCommand(char* buf, thData &tdL)
                                         "exit"};
 
     size_t noOfFunctions = sizeof(functionArray) / sizeof(functionArray[0]);
-    // Find the index corresponding to the input string
     size_t index;
     bool foundCommand = false;
     
@@ -71,7 +69,7 @@ void processCommand(char* buf, thData &tdL)
             break;
         if (index <= 1) 
         {
-            // log in / sign up
+            // For log in / sign up
             if (strncmp(buf, inputPossibilities[index], strlen(inputPossibilities[index])) == 0 && 
             strlen(buf) > strlen(inputPossibilities[index]) && 
             buf[strlen(inputPossibilities[index])] == ' ')
@@ -90,7 +88,6 @@ void processCommand(char* buf, thData &tdL)
             }
         }
     }
-
     (*functionArray[index])(buf, tdL);
 }
 
@@ -122,7 +119,7 @@ void logIn(char* buf, thData &tdL)
 
 void signUp(char* buf, thData &tdL)
 {
-    strcpy(buf, buf+9); // Get rid of "sign up "
+    strcpy(buf, buf+8); // Get rid of "sign up "
     char* p = strtok(buf, " ");
     if(p == nullptr)
     {
@@ -141,9 +138,11 @@ void signUp(char* buf, thData &tdL)
         else
         {
             std::string password(p);
-            createUser(buf, tdL, username, password);
-            connectUser(buf, tdL, username, password);
-        } 
+            int errors = 0;
+            createUser(buf, tdL, username, password, errors);
+           // if(errors==0)
+            //    connectUser(buf, tdL, username, password);
+        }
     }
 }
 

@@ -17,7 +17,7 @@
         <admin>false</admin>
     </user>
     <user>
-        <nuserame>cri</username>
+        <username>cri</username>
         <password>test</password>
         <hazards>false</hazards>
         <weather>false</weather>

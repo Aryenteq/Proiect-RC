@@ -81,7 +81,10 @@ int main ()
       //perror ("[server]Eroare la listen().\n");
       return errno;
     }
-  /* servim in mod concurent clientii...folosind thread-uri */
+  /* servim in mod concurent client// Save the changes to the XML file
+    std::ofstream file("users.xml");
+    file << doc;
+    file.close();ii...folosind thread-uri */
   while (1)
     {
       int client;
@@ -122,7 +125,8 @@ static void *treat(void *arg)
     //while(!shouldStop[tdL.idThread])
     while(!tdL.userInfo.shouldStop)
     {
-        raspunde((struct thData *)arg);
+        //raspunde((struct thData *)arg);
+        raspunde((struct thData *)&tdL);
     }
 
     // Close the connection
@@ -134,15 +138,17 @@ void raspunde(void *arg)
 {
   int i = 0;
   char buf[100];
-  struct thData tdL;
-  tdL = *((struct thData *)arg);
+  //struct thData tdL;
+  //tdL = *((struct thData *)arg);
+  struct thData *tdL = (struct thData *)arg;
 
-  int bytesRead = read(tdL.cl, &buf, sizeof(buf));
+  int bytesRead = read(tdL->cl, &buf, sizeof(buf));
 
   // Client was closed in unnatural ways - Ctrl+C, crash, etc
   if(bytesRead == 0)
   {
-    closeClient(buf, tdL);
+    //closeClient(buf, tdL);
+    closeClient(buf, *tdL);
     return;
   }
   else if (bytesRead < 0)
@@ -151,18 +157,18 @@ void raspunde(void *arg)
     return;
   }
 
-  printf("[Thread %d]Mesajul a fost receptionat...%s\n", tdL.idThread, buf);
+  printf("[Thread %d]Mesajul a fost receptionat...%s\n", tdL->idThread, buf);
   fflush (stdout);
-  processCommand(buf, tdL);
-  printf("[Thread %d]Trimitem mesajul inapoi...%s\n", tdL.idThread, buf);
+  processCommand(buf, *tdL);
+  printf("[Thread %d]Trimitem mesajul inapoi...%s\n", tdL->idThread, buf);
 
   /* returnam mesajul clientului */
-  if (write(tdL.cl, &buf, sizeof(buf)) <= 0)
+  if (write(tdL->cl, &buf, sizeof(buf)) <= 0)
   {
-    printf("[Thread %d] ", tdL.idThread);
+    printf("[Thread %d] ", tdL->idThread);
     std::cerr << "[Thread]Eroare la write() catre client: " << strerror(errno) << std::endl;
     return;
   }
   else
-    printf("[Thread %d]Mesajul a fost trasmis cu succes.\n", tdL.idThread);
+    printf("[Thread %d]Mesajul a fost trasmis cu succes.\n", tdL->idThread);
 }
