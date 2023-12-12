@@ -12,6 +12,7 @@ void connectUser(char* buf, thData &tdL, std::string username, std::string passw
 {
     // If a user is already logged in on this thread
     if(tdL.userInfo.connectedUsername!=nullptr)
+    //if(!tdL.userInfo.connectedUsername.empty())
     {
         strcpy(buf, "You are already logged in.");
         return;
@@ -44,17 +45,18 @@ void connectUser(char* buf, thData &tdL, std::string username, std::string passw
                 {
                     // Could be done better but can't be bothered
                     rapidxml::xml_node<>* showHazardsNode = userNode->first_node("hazards");
-                    tdL.userInfo.showHazards = (showHazardsNode->value() == "true");
+                    tdL.userInfo.showHazards = (strcmp(showHazardsNode->value(), "true") == 0);
                     rapidxml::xml_node<>* showWeatherNode = userNode->first_node("weather");
-                    tdL.userInfo.showWeather = (showWeatherNode->value() == "true");
+                    tdL.userInfo.showWeather = (strcmp(showWeatherNode->value(), "true") == 0);
                     rapidxml::xml_node<>* showSpeedLimitNode = userNode->first_node("speedlimit");
-                    tdL.userInfo.showSpeedLimit = (showSpeedLimitNode->value() == "true");
+                    tdL.userInfo.showSpeedLimit = (strcmp(showSpeedLimitNode->value(), "true") == 0);
                     rapidxml::xml_node<>* adminNode = userNode->first_node("admin");
-                    tdL.userInfo.admin = (adminNode->value() == "true");
+                    tdL.userInfo.admin = (strcmp(adminNode->value(), "true") == 0);
 
                     // Allocate memory to avoid another segmentation fault
                     tdL.userInfo.connectedUsername = new char[username.size() + 1];
                     strcpy(tdL.userInfo.connectedUsername, username.c_str());
+                    //tdL.userInfo.connectedUsername = username;
                 }
 
                 // There can't be two users with the same username, so it's safe to exit either way
