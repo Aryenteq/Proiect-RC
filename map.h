@@ -3,6 +3,7 @@ struct Edge {
     int length;
     std::string streetName;
     int speedLimit;
+    int averageSpeed;
 };
 
 
@@ -12,6 +13,8 @@ private:
     std::vector<std::vector<Edge>> adjacencyList;
 public:
     Graph(int V) : vertices(V), adjacencyList(V) {}
-    void addEdge(int source, int destination, int length, std::string streetName, int speedLimit);
+    void addEdge(int source, int destination, int length, std::string streetName, int speedLimit, int averageSpeed);
+    double Dijkstra(int startNode, int endNode, std::vector<int>& shortestPath);
+    int checkEdge(int from, int to);
     void displayGraph();
 };

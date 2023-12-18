@@ -9,6 +9,7 @@ struct userInformation
   bool showSpeedLimit;
   bool admin;
   char* connectedUsername; // Deallocation not taken care of! Could create problems?
+  Car individualCar;
   //std::string connectedUsername;
 };
 
@@ -37,8 +38,12 @@ void initialiseThread(thData *td, int &i, int &client)
 }
 
 
+// Functions with parameters
 void logIn(char*, thData&);
 void signUp(char*, thData&);
+void createHazard(char*, thData&);
+
+// Function without parameters
 void showActiveThreads(char*, thData&);
 void userStatus(char*, thData&);
 void closeClient(char*, thData&);
@@ -48,15 +53,17 @@ void processCommand(char* buf, thData &tdL)
 {
     // Define an array of function pointers
     void (*functionArray[])(char*, thData&) = {logIn, 
-                                                signUp, 
+                                                signUp,
+                                                createHazard,
                                                 showActiveThreads,
                                                 userStatus,
                                                 closeClient,
                                                 defaultOption};
     const char* inputPossibilities[] = {"log in", 
                                         "sign up", 
-                                        "threads", 
-                                        "status", 
+                                        "hazard",
+                                        "threads",
+                                        "status",
                                         "exit"};
 
     size_t noOfFunctions = sizeof(functionArray) / sizeof(functionArray[0]);
@@ -67,9 +74,8 @@ void processCommand(char* buf, thData &tdL)
     {
         if(index == noOfFunctions - 1)
             break;
-        if (index <= 1) 
+        if (index <= 2) // To change when adding a new function with parameters
         {
-            // For log in / sign up
             if (strncmp(buf, inputPossibilities[index], strlen(inputPossibilities[index])) == 0 && 
             strlen(buf) > strlen(inputPossibilities[index]) && 
             buf[strlen(inputPossibilities[index])] == ' ')
@@ -80,7 +86,7 @@ void processCommand(char* buf, thData &tdL)
         } 
         else 
         {
-            // For other commands
+            // For other commands (w/o parameters)
             if (strcmp(buf, inputPossibilities[index]) == 0) 
             {
                 foundCommand = true;
@@ -140,8 +146,8 @@ void signUp(char* buf, thData &tdL)
             std::string password(p);
             int errors = 0;
             createUser(buf, tdL, username, password, errors);
-           // if(errors==0)
-            //    connectUser(buf, tdL, username, password);
+            if(errors==0)
+                connectUser(buf, tdL, username, password);
         }
     }
 }
@@ -162,11 +168,100 @@ void userStatus(char* buf, thData &tdL)
     strcpy(buf, "Status printed in server terminal");
 }
 
-void showActiveThreads(char* buf, thData &tdL) {
-    for(int i=0; i<activeThreads.size(); i++)
-        printf("%d ", activeThreads[i]);
-    strcpy(buf, "Al doilea test");
+void createHazard(char* buf, thData& tdL)
+{
+    strcpy(buf, buf+7); // Get rid of "hazard "
+    char* p = strtok(buf, " ");
+    if(p == nullptr)
+    {
+        strcpy(buf, "Syntax: hazard <from> <to> <type>");
+        return;
+    }
+    else
+    {
+        std::string fromString(p);
+        p = strtok(nullptr, " ");
+        if(p == nullptr)
+        {
+            strcpy(buf, "Syntax: hazard <from> <to> <type>");
+            return;
+        }
+        else
+        {
+            std::string toString(p);
+            p = strtok(nullptr, " ");
+            if(p == nullptr)
+            {
+                strcpy(buf, "Syntax: hazard <from> <to> <type>");
+                return;
+            }
+            else
+            {
+                std::string type(p);
+
+                if(fromString>toString)
+                    std::swap(toString, fromString);
+                try 
+                {
+                    int from = std::stoi(fromString);
+                    int to = std::stoi(toString);
+
+                    if(!mapGraph.checkEdge(from, to))
+                    {
+                        strcpy(buf, "Edge doesn't exist");
+                        return;
+                    }
+                    try 
+                    {
+                        rapidxml::file<> xmlFile("hazards.xml");
+                        rapidxml::xml_document<> doc;
+                        doc.parse<0>(xmlFile.data());
+
+                        rapidxml::xml_node<>* newHazardNode = doc.allocate_node(rapidxml::node_element, "hazard");
+                        rapidxml::xml_node<>* fromNode = doc.allocate_node(rapidxml::node_element, "from", doc.allocate_string(fromString.c_str()));
+                        rapidxml::xml_node<>* toNode = doc.allocate_node(rapidxml::node_element, "to", doc.allocate_string(toString.c_str()));
+                        rapidxml::xml_node<>* typeNode = doc.allocate_node(rapidxml::node_element, "type", doc.allocate_string(type.c_str()));
+                        
+                        newHazardNode->append_node(fromNode);
+                        newHazardNode->append_node(toNode);
+                        newHazardNode->append_node(typeNode);
+                        doc.first_node()->append_node(newHazardNode);
+
+                        std::ofstream outputFile("hazards.xml");
+                        outputFile << doc;
+                        outputFile.close();
+
+                        strcpy(buf, "Hazard added");
+                    } 
+                    catch (const std::exception& e) 
+                    {
+                        std::cerr << "Exception: " << e.what() << std::endl;
+                    }
+                } catch (const std::invalid_argument& e) {
+                    strcpy(buf, "From/to must be numbers");
+                    return;
+                } catch (const std::out_of_range& e) {
+                    strcpy(buf, "From/to is out of range");
+                    return;
+                }
+            }
+        }
+    }
 }
+
+void showActiveThreads(char* buf, thData &tdL) {
+    char result[100];
+    strcpy(result, "Active threads: ");
+    for(int i=0; i<activeThreads.size(); i++) {
+        printf("%d ", activeThreads[i]);
+        char threadStr[5];
+        sprintf(threadStr, "%d", activeThreads[i]);
+        strcat(result, threadStr);
+        strcat(result, " ");
+    }
+    strcpy(buf, result);
+}
+
 
 void closeClient(char* buf, thData &tdL) {
     tdL.userInfo.shouldStop=true;

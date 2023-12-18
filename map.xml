@@ -4,28 +4,32 @@
         <from>0</from>
         <to>1</to>
         <name>Strada exemplu</name>
-        <lenght>100</lenght>
+        <length>100</length>
         <speedlimit>50</speedlimit>
+        <averagespeed>45</averagespeed>
     </edge>
     <edge>
         <from>0</from>
         <to>2</to>
         <name>Strada Lapusneanu</name>
-        <lenght>50</lenght>
+        <length>400</length>
         <speedlimit>50</speedlimit>
+        <averagespeed>40</averagespeed>
     </edge>
     <edge>
         <from>1</from>
         <to>2</to>
         <name>Strada Soarelui</name>
-        <lenght>1000</lenght>
+        <length>1000</length>
         <speedlimit>130</speedlimit>
+        <averagespeed>130</averagespeed>
     </edge>
     <edge>
         <from>2</from>
         <to>3</to>
         <name>Strada Mihai Viteazu</name>
-        <lenght>10</lenght>
+        <length>70</length>
         <speedlimit>100</speedlimit>
+        <averagespeed>70</averagespeed>
     </edge>
 </graph> 

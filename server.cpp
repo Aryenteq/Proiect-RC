@@ -11,15 +11,16 @@
 
 /* Added */
 #include <stdint.h> // intptr_t
-#include <cerrno> /* for cpp errors */
+#include <cerrno> // for cpp errors
 #include <iostream> // cerr
 #include <vector>
 #include <string>
-
+#include <fstream> // save .xml changes
 
 using namespace std;
 
 #include "map.cpp"
+#include "car.cpp"
 #include "process.cpp"
 
 /* portul folosit */
@@ -34,6 +35,14 @@ void raspunde(void *);
 int main ()
 {
   createGraph();
+  std::vector<int> shortestPath;
+  std::cout<<mapGraph.Dijkstra(0,3, shortestPath)<<std::endl;
+  //for(int i=0;i<shortestPath.size();i++)
+  //std::cout<<shortestPath[i]<<" ";
+  std::cout<<mapGraph.Dijkstra(0,1,shortestPath)<<std::endl;
+
+  //vector<Car> cars;
+
   struct sockaddr_in server;	// structura folosita de server
   struct sockaddr_in from;	
   int nr;		//mesajul primit de trimis la client 

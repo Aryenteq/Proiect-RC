@@ -81,7 +81,6 @@ bool isUsernameTaken(rapidxml::xml_node<> *root, const std::string &username) {
 
 void createUser(char* buf, thData &tdL, std::string username, std::string password, int &errors)
 {
-    //printf("Aaaa %s", tdL.userInfo.connectedUsername);
     // If a user is already logged in on this thread
     if(tdL.userInfo.connectedUsername!=nullptr)
     //if(!tdL.userInfo.connectedUsername.empty())
@@ -124,12 +123,11 @@ void createUser(char* buf, thData &tdL, std::string username, std::string passwo
 
         // Append to the root
         doc.first_node()->append_node(newUserNode);
-
-        // File doesn't change at the moment, TODO
         
-        //std::ofstream file("users.xml");
-        //rapidxml::print(std::ostream_iterator<char>(file), doc, 0);
-        //file.close();
+        // Save the changes
+        std::ofstream outputFile("users.xml");
+        outputFile << doc; 
+        outputFile.close();
     } 
     catch (const std::exception& e) 
     {
