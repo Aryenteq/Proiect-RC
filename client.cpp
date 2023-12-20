@@ -10,9 +10,10 @@
 #include <string.h>
 
 /* Added */
-#include <cerrno> /* for cpp errors */
+#include <cerrno> // cpp errors
 #include <iostream> // cerr
 #include <arpa/inet.h>  // IP addres (inet_pton)
+#include <fcntl.h>  // receive broadcasting messages
 
 
 /* codul de eroare returnat de anumite apeluri */
@@ -67,9 +68,63 @@ int main (int argc, char *argv[])
         //perror ("[client]Eroare la connect().\n");
         return errno;
     }
+
+    /*
+    // Set the socket to non-blocking mode
+    int flags = fcntl(sd, F_GETFL, 0);
+    fcntl(sd, F_SETFL, flags | O_NONBLOCK);
+    while (1) {
+        // Try to read data from the server
+        usleep(100000);  // Sleep for 100 milliseconds
+        memset(buf, 0, sizeof(buf));
+        ssize_t bytesRead = read(sd, &buf, sizeof(buf));
+        std::cout<<"HEI";
+        if (bytesRead > 0) {
+            std::cout<<"HEI222";
+            // Display the received message
+            printf("[client]Mesajul primit este: %.*s\n", (int)bytesRead, buf);
+
+            // Close if "Closing" message received
+            if (strcmp(buf, "Closing") == 0)
+                break;
+        }  else if (bytesRead == 0) {
+            // The server has closed the connection
+            perror("[client]Server has closed the connection");
+            break;
+        } else if (errno != EWOULDBLOCK && errno != EAGAIN) {
+            perror("[client]Eroare la read()");
+            return errno;
+        }
+
+        // Try to read user input from stdin
+        printf("[client]Introduceti o comanda: ");
+        fflush(stdout);
+        ssize_t bytesWritten = read(0, buf, sizeof(buf));
+        if (bytesWritten > 0) {
+            int index = 0;
+            while (buf[index] != '\n')
+                index++;
+            buf[index] = '\0';
+
+            // Send the command to the server
+            if (write(sd, &buf, bytesWritten) <= 0) {
+                std::cerr << "[client]Eroare la write() spre server: " << strerror(errno) << std::endl;
+                return errno;
+            }
+        } else if (bytesWritten == 0) {
+            // End of input (Ctrl+D)
+            printf("[client]End of input. Closing the connection.\n");
+            break;
+        } else if (errno != EWOULDBLOCK && errno != EAGAIN) {
+            std::cerr << "[client]Eroare la read(): " << strerror(errno) << std::endl;
+            return errno;
+        }
+    }
+    */
+
     while(1)
     {
-        /* citirea mesajului */
+        // citirea mesajului
         printf ("[client]Introduceti o comanda: ");
         fflush (stdout);
         read (0, buf, sizeof(buf));
@@ -79,9 +134,8 @@ int main (int argc, char *argv[])
         while(buf[index]!='\n')
             index++;
         buf[index]='\0';
-        //printf("[client]Am citit: %s\n", buf);
 
-        /* trimiterea mesajului la server */
+        // trimiterea mesajului la server
         if (write (sd,&buf,sizeof(buf)) <= 0)
         {
             std::cerr << "[client]Eroare la write() spre server: " << strerror(errno) << std::endl;
@@ -89,21 +143,22 @@ int main (int argc, char *argv[])
             return errno;
         }
 
-        /* citirea raspunsului dat de server 
-        (apel blocant pina cind serverul raspunde) */
+        // citirea raspunsului dat de server 
+        // (apel blocant pina cind serverul raspunde) 
         if (read (sd, &buf,sizeof(buf)) < 0)
         {
             std::cerr << "[client]Eroare la read(): " << strerror(errno) << std::endl;
             //perror ("[client]Eroare la read() de la server.\n");
             return errno;
         }
-        /* afisam mesajul primit */
+        // afisam mesajul primit
         printf ("[client]Mesajul primit este: %s\n", buf);
 
         // Close
         if (strcmp(buf, "Closing") == 0)
             break;
-    }  
+    }
+    
     /* inchidem conexiunea, am terminat */
     close (sd);
 }

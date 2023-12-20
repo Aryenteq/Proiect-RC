@@ -1,6 +1,7 @@
 #include <algorithm> // remove_if
+#include <mutex>
 
-std::vector<int> activeThreads;
+std::mutex mtx; 
 struct userInformation
 {
   bool shouldStop;
@@ -18,6 +19,7 @@ typedef struct thData{
 	int cl; //descriptorul intors de accept
     userInformation userInfo;
 }thData;
+std::vector<thData*> activeThreads;
 
 #include "users.cpp"
 
@@ -34,9 +36,27 @@ void initialiseThread(thData *td, int &i, int &client)
     td->userInfo.connectedUsername = nullptr;
     //td->userInfo.connectedUsername = "";
 
-    activeThreads.push_back(td->idThread);
+    activeThreads.push_back(td);
 }
 
+void broadcastMessage(const std::string &message, int senderID)
+{
+    std::lock_guard<std::mutex> lock(mtx);
+
+    // Iterate over the vector of connected clients and send the message to each one
+    for (thData *td : activeThreads)
+    {
+        // Skip the sender thread
+        if (td->idThread == senderID)
+            continue;
+
+        if (write(td->cl, message.c_str(), message.size() + 1) <= 0)
+        {
+            std::cerr << "Error writing to client: " << strerror(errno) << std::endl;
+            // Handle the error as needed
+        }
+    }
+}
 
 // Functions with parameters
 void logIn(char*, thData&);
@@ -231,6 +251,8 @@ void createHazard(char* buf, thData& tdL)
                         outputFile << doc;
                         outputFile.close();
 
+                        std::string test("Hazaaaard");
+                        broadcastMessage(test, tdL.idThread);
                         strcpy(buf, "Hazard added");
                     } 
                     catch (const std::exception& e) 
@@ -253,25 +275,26 @@ void showActiveThreads(char* buf, thData &tdL) {
     char result[100];
     strcpy(result, "Active threads: ");
     for(int i=0; i<activeThreads.size(); i++) {
-        printf("%d ", activeThreads[i]);
+        printf("%d ", activeThreads[i]->idThread);
         char threadStr[5];
-        sprintf(threadStr, "%d", activeThreads[i]);
+        sprintf(threadStr, "%d", activeThreads[i]->idThread);
         strcat(result, threadStr);
         strcat(result, " ");
     }
     strcpy(buf, result);
 }
 
-
-void closeClient(char* buf, thData &tdL) {
-    tdL.userInfo.shouldStop=true;
+void closeClient(char* buf, thData &tdL) 
+{
+    tdL.userInfo.shouldStop = true;
 
     // Remove the element from activeThreads vector
-    auto newEnd = std::remove(activeThreads.begin(), activeThreads.end(), tdL.idThread);
+    auto newEnd = std::remove(activeThreads.begin(), activeThreads.end(), &tdL);
     activeThreads.erase(newEnd, activeThreads.end());
     //activeThreads.shrink_to_fit();
     strcpy(buf, "Closing");
 }
+
 
 void defaultOption(char* buf, thData &tdL) {
     strcpy(buf, "Invalid command");
