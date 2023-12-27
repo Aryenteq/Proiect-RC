@@ -15,6 +15,6 @@ public:
     Graph(int V) : vertices(V), adjacencyList(V) {}
     void addEdge(int source, int destination, int length, std::string streetName, int speedLimit, int averageSpeed);
     double Dijkstra(int startNode, int endNode, std::vector<int>& shortestPath);
-    int checkEdge(int from, int to);
+    std::string getEdgeName(int from, int to);
     void displayGraph();
 };

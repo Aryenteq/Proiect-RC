@@ -114,10 +114,10 @@ int main ()
 	
         /* s-a realizat conexiunea, se astepta mesajul */
 
-	td=(struct thData*)malloc(sizeof(struct thData));	
+	    td=(struct thData*)malloc(sizeof(struct thData));	
   
-  initialiseThread(td, i, client);
-	pthread_create(&th[i], NULL, &treat, td);	      	
+      initialiseThread(td, i, client);
+	    pthread_create(&th[i], NULL, &treat, td);	      	
 	}//while    
 };
 

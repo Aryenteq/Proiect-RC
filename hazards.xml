@@ -7,27 +7,22 @@
 	<hazard>
 		<from>0</from>
 		<to>1</to>
-		<type>ffff</type>
+		<type>pathole</type>
 	</hazard>
 	<hazard>
 		<from>0</from>
 		<to>1</to>
-		<type>test</type>
+		<type>pathole</type>
 	</hazard>
 	<hazard>
 		<from>0</from>
 		<to>1</to>
-		<type>test</type>
+		<type>pathole</type>
 	</hazard>
 	<hazard>
 		<from>0</from>
 		<to>1</to>
-		<type>testt</type>
-	</hazard>
-	<hazard>
-		<from>0</from>
-		<to>1</to>
-		<type>testssss</type>
+		<type>ff</type>
 	</hazard>
 	<hazard>
 		<from>0</from>
@@ -37,7 +32,7 @@
 	<hazard>
 		<from>0</from>
 		<to>1</to>
-		<type>ffffff</type>
+		<type>pathole</type>
 	</hazard>
 </hazards>
 

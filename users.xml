@@ -2,9 +2,9 @@
 	<user>
 		<username>admin</username>
 		<password>test</password>
-		<hazards>false</hazards>
-		<weather>false</weather>
-		<speedlimit>false</speedlimit>
+		<hazards>true</hazards>
+		<weather>true</weather>
+		<speedlimit>true</speedlimit>
 		<admin>true</admin>
 	</user>
 	<user>
@@ -26,30 +26,6 @@
 	<user>
 		<username>f</username>
 		<password>f</password>
-		<hazards>false</hazards>
-		<weather>false</weather>
-		<speedlimit>false</speedlimit>
-		<admin>false</admin>
-	</user>
-	<user>
-		<username>xmltest</username>
-		<password>signup</password>
-		<hazards>false</hazards>
-		<weather>false</weather>
-		<speedlimit>false</speedlimit>
-		<admin>false</admin>
-	</user>
-	<user>
-		<username>final</username>
-		<password>test</password>
-		<hazards>false</hazards>
-		<weather>false</weather>
-		<speedlimit>false</speedlimit>
-		<admin>false</admin>
-	</user>
-	<user>
-		<username>xmlll</username>
-		<password>xmlll</password>
 		<hazards>false</hazards>
 		<weather>false</weather>
 		<speedlimit>false</speedlimit>

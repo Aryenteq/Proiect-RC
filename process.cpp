@@ -11,7 +11,6 @@ struct userInformation
   bool admin;
   char* connectedUsername; // Deallocation not taken care of! Could create problems?
   Car individualCar;
-  //std::string connectedUsername;
 };
 
 typedef struct thData{
@@ -24,7 +23,7 @@ std::vector<thData*> activeThreads;
 #include "users.cpp"
 
 
-void initialiseThread(thData *td, int &i, int &client)
+void initialiseThread(thData* td, int &i, int &client)
 {
     td->idThread=i++;
 	td->cl=client;
@@ -39,22 +38,17 @@ void initialiseThread(thData *td, int &i, int &client)
     activeThreads.push_back(td);
 }
 
-void broadcastMessage(const std::string &message, int senderID)
+void broadcastMessage(const std::string& messageText, const std::string& messageType, int senderID)
 {
     std::lock_guard<std::mutex> lock(mtx);
-
-    // Iterate over the vector of connected clients and send the message to each one
     for (thData *td : activeThreads)
     {
         // Skip the sender thread
         if (td->idThread == senderID)
             continue;
-
-        if (write(td->cl, message.c_str(), message.size() + 1) <= 0)
-        {
-            std::cerr << "Error writing to client: " << strerror(errno) << std::endl;
-            // Handle the error as needed
-        }
+        if(td->userInfo.showHazards)
+            if (write(td->cl, messageText.c_str(), messageText.size() + 1) <= 0)
+                std::cerr << "Error writing to client: " << strerror(errno) << std::endl;
     }
 }
 
@@ -225,8 +219,8 @@ void createHazard(char* buf, thData& tdL)
                 {
                     int from = std::stoi(fromString);
                     int to = std::stoi(toString);
-
-                    if(!mapGraph.checkEdge(from, to))
+                    std::string edgeName = mapGraph.getEdgeName(from, to);
+                    if(edgeName == "")
                     {
                         strcpy(buf, "Edge doesn't exist");
                         return;
@@ -251,8 +245,13 @@ void createHazard(char* buf, thData& tdL)
                         outputFile << doc;
                         outputFile.close();
 
-                        std::string test("Hazaaaard");
-                        broadcastMessage(test, tdL.idThread);
+                        std::string messageText("New hazard: ");
+                        messageText += type;
+                        messageText += "on ";
+                        messageText += edgeName;
+                        messageText += ".";
+                        std::string messageType("Hazard");
+                        broadcastMessage(messageText, messageType, tdL.idThread);
                         strcpy(buf, "Hazard added");
                     } 
                     catch (const std::exception& e) 
@@ -276,6 +275,7 @@ void showActiveThreads(char* buf, thData &tdL) {
     strcpy(result, "Active threads: ");
     for(int i=0; i<activeThreads.size(); i++) {
         printf("%d ", activeThreads[i]->idThread);
+        std::cout<<"hazard "<<activeThreads[i]->userInfo.showHazards<<endl;
         char threadStr[5];
         sprintf(threadStr, "%d", activeThreads[i]->idThread);
         strcat(result, threadStr);
@@ -289,8 +289,12 @@ void closeClient(char* buf, thData &tdL)
     tdL.userInfo.shouldStop = true;
 
     // Remove the element from activeThreads vector
-    auto newEnd = std::remove(activeThreads.begin(), activeThreads.end(), &tdL);
-    activeThreads.erase(newEnd, activeThreads.end());
+    //auto newEnd = std::remove(activeThreads.begin(), activeThreads.end(), &tdL);
+   // activeThreads.erase(newEnd, activeThreads.end());
+
+    auto newEnd = std::remove_if(activeThreads.begin(), activeThreads.end(),
+                                 [&tdL](thData* thread) { return thread == &tdL; });
+
     //activeThreads.shrink_to_fit();
     strcpy(buf, "Closing");
 }
