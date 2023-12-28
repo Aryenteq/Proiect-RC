@@ -1,6 +1,7 @@
 #include <algorithm> // remove_if
+#include <mutex>
 
-std::vector<int> activeThreads;
+std::mutex mtx; 
 struct userInformation
 {
   bool shouldStop;
@@ -10,19 +11,23 @@ struct userInformation
   bool admin;
   char* connectedUsername; // Deallocation not taken care of! Could create problems?
   Car individualCar;
-  //std::string connectedUsername;
 };
 
 typedef struct thData{
-	int idThread; //id-ul thread-ului tinut in evidenta de acest program
-	int cl; //descriptorul intors de accept
+	int idThread;
+	int cl;
     userInformation userInfo;
 }thData;
 
+// Removed the pointer because the passed thData* is local, being deleted prematurly
+// Therefore, the activeThreads pointers are invalid
+// ATM doing a copy of the thData* td, not efficient but works
+std::vector<thData> activeThreads;
+
+
 #include "users.cpp"
 
-
-void initialiseThread(thData *td, int &i, int &client)
+void initialiseThread(thData* td, int &i, int &client)
 {
     td->idThread=i++;
 	td->cl=client;
@@ -32,16 +37,38 @@ void initialiseThread(thData *td, int &i, int &client)
     td->userInfo.showSpeedLimit = false;
     td->userInfo.admin = false;
     td->userInfo.connectedUsername = nullptr;
-    //td->userInfo.connectedUsername = "";
 
-    activeThreads.push_back(td->idThread);
+    thData user;
+    user.idThread = td->idThread;
+    user.cl = client;
+    user.userInfo.shouldStop = false;
+    user.userInfo.showHazards = false;
+    user.userInfo.showWeather = false;
+    user.userInfo.showSpeedLimit = false;
+    user.userInfo.admin = false;
+    user.userInfo.connectedUsername = nullptr;
+    activeThreads.push_back(user);
 }
 
+void broadcastMessage(const std::string& messageText, const std::string& messageType, int senderID)
+{
+    std::lock_guard<std::mutex> lock(mtx);
+    for (thData td : activeThreads)
+    {
+        // Skip the sender thread
+        if (td.idThread == senderID)
+            continue;
+        if(td.userInfo.showHazards)
+            if (write(td.cl, messageText.c_str(), messageText.size() + 1) <= 0)
+                std::cerr << "Error writing to client: " << strerror(errno) << std::endl;
+    }
+}
 
 // Functions with parameters
 void logIn(char*, thData&);
 void signUp(char*, thData&);
 void createHazard(char*, thData&);
+void changeSettings(char*, thData&);
 
 // Function without parameters
 void showActiveThreads(char*, thData&);
@@ -55,6 +82,7 @@ void processCommand(char* buf, thData &tdL)
     void (*functionArray[])(char*, thData&) = {logIn, 
                                                 signUp,
                                                 createHazard,
+                                                changeSettings,
                                                 showActiveThreads,
                                                 userStatus,
                                                 closeClient,
@@ -62,6 +90,7 @@ void processCommand(char* buf, thData &tdL)
     const char* inputPossibilities[] = {"log in", 
                                         "sign up", 
                                         "hazard",
+                                        "set",
                                         "threads",
                                         "status",
                                         "exit"};
@@ -74,7 +103,7 @@ void processCommand(char* buf, thData &tdL)
     {
         if(index == noOfFunctions - 1)
             break;
-        if (index <= 2) // To change when adding a new function with parameters
+        if (index <= 3) // To change when adding a new function with parameters
         {
             if (strncmp(buf, inputPossibilities[index], strlen(inputPossibilities[index])) == 0 && 
             strlen(buf) > strlen(inputPossibilities[index]) && 
@@ -152,6 +181,147 @@ void signUp(char* buf, thData &tdL)
     }
 }
 
+void createHazard(char* buf, thData& tdL)
+{
+    strcpy(buf, buf+7); // Get rid of "hazard "
+    char* p = strtok(buf, " ");
+    if(p == nullptr)
+    {
+        strcpy(buf, "Syntax: hazard <from> <to> <type>");
+        return;
+    }
+    std::string fromString(p);
+    p = strtok(nullptr, " ");
+    if(p == nullptr)
+    {
+        strcpy(buf, "Syntax: hazard <from> <to> <type>");
+        return;
+    }
+    std::string toString(p);
+    p = strtok(nullptr, " ");
+    if(p == nullptr)
+    {
+        strcpy(buf, "Syntax: hazard <from> <to> <type>");
+        return;
+    }
+    std::string type(p);
+    if(type!="pathole" && type!="accident" && type!="construction" && type!="other")
+    {
+        strcpy(buf, "Available hazards: pathole, accident, construction, other");
+        return;
+    }
+    if(fromString>toString)
+        std::swap(toString, fromString);
+    if(isValidInteger(buf, fromString) && isValidInteger(buf, toString))
+    {
+        int from = std::stoi(fromString);
+        int to = std::stoi(toString);
+        std::string edgeName = mapGraph.getEdgeName(from, to);
+        if(edgeName == "")
+        {
+            strcpy(buf, "Edge doesn't exist");
+            return;
+        }
+        try 
+        {
+            rapidxml::file<> xmlFile("hazards.xml");
+            rapidxml::xml_document<> doc;
+            doc.parse<0>(xmlFile.data());
+
+            rapidxml::xml_node<>* newHazardNode = doc.allocate_node(rapidxml::node_element, "hazard");
+            rapidxml::xml_node<>* fromNode = doc.allocate_node(rapidxml::node_element, "from", doc.allocate_string(fromString.c_str()));
+            rapidxml::xml_node<>* toNode = doc.allocate_node(rapidxml::node_element, "to", doc.allocate_string(toString.c_str()));
+            rapidxml::xml_node<>* typeNode = doc.allocate_node(rapidxml::node_element, "type", doc.allocate_string(type.c_str()));
+                        
+            newHazardNode->append_node(fromNode);
+            newHazardNode->append_node(toNode);
+            newHazardNode->append_node(typeNode);
+            doc.first_node()->append_node(newHazardNode);
+
+            std::ofstream outputFile("hazards.xml");
+            outputFile << doc;
+            outputFile.close();
+
+            std::string messageText("New hazard: ");
+            messageText += type;
+            messageText += " on ";
+            messageText += edgeName;
+            messageText += ".";
+            std::string messageType("Hazard");
+            broadcastMessage(messageText, messageType, tdL.idThread);
+            strcpy(buf, "Hazard added");
+        } 
+        catch (const std::exception& e) 
+        {
+            std::cerr << "Exception: " << e.what() << std::endl;
+        }
+    }
+}
+
+void changeSettings(char* buf, thData& tdL)
+{
+    strcpy(buf, buf+4); // Get rid of "set "
+    char* p = strtok(buf, " ");
+    if(p == nullptr)
+    {
+        strcpy(buf, "Sintax: set <setting> <0/1>");
+        return;
+    }
+    std::string setting(p);
+    p = strtok(nullptr, " ");
+    if(p == nullptr)
+    {
+        strcpy(buf, "Sintax: set <setting> <0/1>");
+        return;
+    }
+    if(setting!="hazards" && setting!="weather" && setting!="speedlimit" && setting!="admin")
+    {
+        strcpy(buf, "Available settings: hazards, weather, speedlimit, admin");
+        return;
+    }
+    std::string value(p);
+    if(isValidInteger(buf, value))
+    {
+        int value = stoi(p);
+        if(value!=0 && value!=1)
+        {
+            strcpy(buf, "Use 0 for false, 1 for true. Try again.");
+            return;
+        }
+        for (thData& td : activeThreads)
+            if (td.idThread == tdL.idThread)
+            {
+                if(setting=="hazards")
+                tdL.userInfo.showHazards = value, td.userInfo.showHazards = value;
+                else if(setting=="weather")
+                tdL.userInfo.showWeather = value, td.userInfo.showWeather = value;
+                else if(setting=="speedlimit")
+                tdL.userInfo.showSpeedLimit = value, td.userInfo.showSpeedLimit = value;
+                else if(setting=="admin")
+                tdL.userInfo.admin = value, td.userInfo.admin = value;
+                
+                strcpy(buf, "Setting modified. Be aware that you aren't logged in.");
+                // Save the settings to the account
+                if(tdL.userInfo.connectedUsername != nullptr)
+                    updateUserSettings(buf, tdL.userInfo.connectedUsername, setting, value);
+            }
+    }
+}
+
+void showActiveThreads(char* buf, thData &tdL) {
+    char result[100];
+    strcpy(result, "Active threads: ");
+    for(int i=0; i<activeThreads.size(); i++) {
+        printf("%d ", activeThreads[i].idThread);
+        std::cout<<"hazard "<<activeThreads[i].userInfo.showHazards<<endl;
+        char threadStr[5];
+        sprintf(threadStr, "%d", activeThreads[i].idThread);
+        strcat(result, threadStr);
+        strcat(result, " ");
+    }
+    strcpy(buf, result);
+}
+
 void userStatus(char* buf, thData &tdL)
 {
     std::cout << "ID Thread: " << tdL.idThread << std::endl <<
@@ -168,111 +338,19 @@ void userStatus(char* buf, thData &tdL)
     strcpy(buf, "Status printed in server terminal");
 }
 
-void createHazard(char* buf, thData& tdL)
+void closeClient(char* buf, thData &tdL) 
 {
-    strcpy(buf, buf+7); // Get rid of "hazard "
-    char* p = strtok(buf, " ");
-    if(p == nullptr)
-    {
-        strcpy(buf, "Syntax: hazard <from> <to> <type>");
-        return;
-    }
-    else
-    {
-        std::string fromString(p);
-        p = strtok(nullptr, " ");
-        if(p == nullptr)
-        {
-            strcpy(buf, "Syntax: hazard <from> <to> <type>");
-            return;
-        }
-        else
-        {
-            std::string toString(p);
-            p = strtok(nullptr, " ");
-            if(p == nullptr)
-            {
-                strcpy(buf, "Syntax: hazard <from> <to> <type>");
-                return;
-            }
-            else
-            {
-                std::string type(p);
+    tdL.userInfo.shouldStop = true;
 
-                if(fromString>toString)
-                    std::swap(toString, fromString);
-                try 
-                {
-                    int from = std::stoi(fromString);
-                    int to = std::stoi(toString);
-
-                    if(!mapGraph.checkEdge(from, to))
-                    {
-                        strcpy(buf, "Edge doesn't exist");
-                        return;
-                    }
-                    try 
-                    {
-                        rapidxml::file<> xmlFile("hazards.xml");
-                        rapidxml::xml_document<> doc;
-                        doc.parse<0>(xmlFile.data());
-
-                        rapidxml::xml_node<>* newHazardNode = doc.allocate_node(rapidxml::node_element, "hazard");
-                        rapidxml::xml_node<>* fromNode = doc.allocate_node(rapidxml::node_element, "from", doc.allocate_string(fromString.c_str()));
-                        rapidxml::xml_node<>* toNode = doc.allocate_node(rapidxml::node_element, "to", doc.allocate_string(toString.c_str()));
-                        rapidxml::xml_node<>* typeNode = doc.allocate_node(rapidxml::node_element, "type", doc.allocate_string(type.c_str()));
-                        
-                        newHazardNode->append_node(fromNode);
-                        newHazardNode->append_node(toNode);
-                        newHazardNode->append_node(typeNode);
-                        doc.first_node()->append_node(newHazardNode);
-
-                        std::ofstream outputFile("hazards.xml");
-                        outputFile << doc;
-                        outputFile.close();
-
-                        strcpy(buf, "Hazard added");
-                    } 
-                    catch (const std::exception& e) 
-                    {
-                        std::cerr << "Exception: " << e.what() << std::endl;
-                    }
-                } catch (const std::invalid_argument& e) {
-                    strcpy(buf, "From/to must be numbers");
-                    return;
-                } catch (const std::out_of_range& e) {
-                    strcpy(buf, "From/to is out of range");
-                    return;
-                }
-            }
-        }
-    }
-}
-
-void showActiveThreads(char* buf, thData &tdL) {
-    char result[100];
-    strcpy(result, "Active threads: ");
-    for(int i=0; i<activeThreads.size(); i++) {
-        printf("%d ", activeThreads[i]);
-        char threadStr[5];
-        sprintf(threadStr, "%d", activeThreads[i]);
-        strcat(result, threadStr);
-        strcat(result, " ");
-    }
-    strcpy(buf, result);
-}
-
-
-void closeClient(char* buf, thData &tdL) {
-    tdL.userInfo.shouldStop=true;
-
-    // Remove the element from activeThreads vector
-    auto newEnd = std::remove(activeThreads.begin(), activeThreads.end(), tdL.idThread);
-    activeThreads.erase(newEnd, activeThreads.end());
-    //activeThreads.shrink_to_fit();
+    // Lambda function because I need to compare 2 elements with custom ==
+    activeThreads.erase(
+    std::remove_if(activeThreads.begin(), activeThreads.end(),
+                   [tdL](const thData& element) { return element.idThread == tdL.idThread; }),
+    activeThreads.end());
     strcpy(buf, "Closing");
 }
 
-void defaultOption(char* buf, thData &tdL) {
+void defaultOption(char* buf, thData &tdL) 
+{
     strcpy(buf, "Invalid command");
 }

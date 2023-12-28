@@ -19,6 +19,7 @@
 
 using namespace std;
 
+#include "utilities.cpp"
 #include "map.cpp"
 #include "car.cpp"
 #include "process.cpp"
@@ -114,10 +115,10 @@ int main ()
 	
         /* s-a realizat conexiunea, se astepta mesajul */
 
-	td=(struct thData*)malloc(sizeof(struct thData));	
+	    td=(struct thData*)malloc(sizeof(struct thData));	
   
-  initialiseThread(td, i, client);
-	pthread_create(&th[i], NULL, &treat, td);	      	
+      initialiseThread(td, i, client);
+	    pthread_create(&th[i], NULL, &treat, td);	      	
 	}//while    
 };
 
@@ -127,18 +128,16 @@ static void *treat(void *arg)
 {
     struct thData tdL;
     tdL = *((struct thData *)arg);
+    // initializeThread() could be done here, being able to store in activeThreads vector pointers
+    // To do so I need to pass i and client variable from main to this function
+    // Too much hassle
     printf("[thread]- %d - Asteptam mesajul...\n", tdL.idThread);
     fflush(stdout);
     pthread_detach(pthread_self());
 
-    //while(!shouldStop[tdL.idThread])
     while(!tdL.userInfo.shouldStop)
-    {
-        //raspunde((struct thData *)arg);
         raspunde((struct thData *)&tdL);
-    }
 
-    // Close the connection
     close((intptr_t)arg);
     return NULL;
 }
@@ -147,8 +146,6 @@ void raspunde(void *arg)
 {
   int i = 0;
   char buf[100];
-  //struct thData tdL;
-  //tdL = *((struct thData *)arg);
   struct thData *tdL = (struct thData *)arg;
 
   int bytesRead = read(tdL->cl, &buf, sizeof(buf));
@@ -156,7 +153,6 @@ void raspunde(void *arg)
   // Client was closed in unnatural ways - Ctrl+C, crash, etc
   if(bytesRead == 0)
   {
-    //closeClient(buf, tdL);
     closeClient(buf, *tdL);
     return;
   }
@@ -168,10 +164,16 @@ void raspunde(void *arg)
 
   printf("[Thread %d]Mesajul a fost receptionat...%s\n", tdL->idThread, buf);
   fflush (stdout);
+
+  // 
+  //
+  // Process the command received from client (process.cpp)
+  //
+  //
   processCommand(buf, *tdL);
   printf("[Thread %d]Trimitem mesajul inapoi...%s\n", tdL->idThread, buf);
 
-  /* returnam mesajul clientului */
+  // Return the message to client
   if (write(tdL->cl, &buf, sizeof(buf)) <= 0)
   {
     printf("[Thread %d] ", tdL->idThread);

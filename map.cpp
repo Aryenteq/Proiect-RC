@@ -87,17 +87,18 @@ double Graph::Dijkstra(int startNode, int endNode, std::vector<int>& shortestPat
     return estimatedTime[endNode];
 }
 
-int Graph::checkEdge(int from, int to)
+std::string Graph::getEdgeName(int from, int to)
 {
     if(from>vertices || to>vertices)
-        return 0;
+        return "";
     for (const Edge& edge : adjacencyList[from]) 
     {
         if (edge.destination == to)
-            return 1;
+            return edge.streetName;
     }
-    return 0;
+    return "";
 }
+
 
 void createGraph()
 {

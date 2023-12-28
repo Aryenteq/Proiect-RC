@@ -1,10 +1,3 @@
-// If you remove const you get a segmentation fault
-// Took 3 hours to find the problem
-const char* boolToChar(bool input)
-{
-    return input ? "true" : "false";
-}
-
 void connectUser(char* buf, thData &tdL, std::string username, std::string password)
 {
     // If a user is already logged in on this thread
@@ -40,20 +33,32 @@ void connectUser(char* buf, thData &tdL, std::string username, std::string passw
                 }
                 else
                 {
+                    
+                    for (thData& td : activeThreads)
+                        if (td.idThread == tdL.idThread)
+                    {
                     // Could be done better but can't be bothered
                     rapidxml::xml_node<>* showHazardsNode = userNode->first_node("hazards");
                     tdL.userInfo.showHazards = (strcmp(showHazardsNode->value(), "true") == 0);
+                    td.userInfo.showHazards = (strcmp(showHazardsNode->value(), "true") == 0);
                     rapidxml::xml_node<>* showWeatherNode = userNode->first_node("weather");
                     tdL.userInfo.showWeather = (strcmp(showWeatherNode->value(), "true") == 0);
+                    td.userInfo.showWeather = (strcmp(showWeatherNode->value(), "true") == 0);
                     rapidxml::xml_node<>* showSpeedLimitNode = userNode->first_node("speedlimit");
                     tdL.userInfo.showSpeedLimit = (strcmp(showSpeedLimitNode->value(), "true") == 0);
+                    td.userInfo.showSpeedLimit = (strcmp(showSpeedLimitNode->value(), "true") == 0);
                     rapidxml::xml_node<>* adminNode = userNode->first_node("admin");
                     tdL.userInfo.admin = (strcmp(adminNode->value(), "true") == 0);
+                    td.userInfo.admin = (strcmp(adminNode->value(), "true") == 0);
 
                     // Allocate memory to avoid another segmentation fault
                     tdL.userInfo.connectedUsername = new char[username.size() + 1];
                     strcpy(tdL.userInfo.connectedUsername, username.c_str());
-                    //tdL.userInfo.connectedUsername = username;
+
+                    td.userInfo.connectedUsername = new char[username.size() + 1];
+                    strcpy(td.userInfo.connectedUsername, username.c_str());
+                    break;
+                    }
                 }
 
                 // There can't be two users with the same username, so it's safe to exit either way
@@ -129,6 +134,48 @@ void createUser(char* buf, thData &tdL, std::string username, std::string passwo
         outputFile << doc; 
         outputFile.close();
     } 
+    catch (const std::exception& e) 
+    {
+        std::cerr << "Exception: " << e.what() << std::endl;
+    }
+}
+
+
+void updateUserSettings(char* buf, const char* username, const std::string& setting, bool value)
+{
+    try {
+        rapidxml::file<> xmlFile("users.xml");
+        rapidxml::xml_document<> doc;
+        doc.parse<0>(xmlFile.data());
+
+        for (rapidxml::xml_node<>* userNode = doc.first_node("users")->first_node("user"); userNode; userNode = userNode->next_sibling("user")) 
+        {
+            rapidxml::xml_node<>* usernameNode = userNode->first_node("username");
+            if (usernameNode && strcmp(usernameNode->value(), username) == 0) 
+            {
+                // Update the specified setting
+                rapidxml::xml_node<>* settingNode = userNode->first_node(setting.c_str());
+                if (settingNode)
+                {
+                    settingNode->value(doc.allocate_string(boolToChar(value)));
+                    std::ofstream outFile("users.xml");
+                    outFile << doc;
+                    outFile.close();
+    
+                    cout << settingNode->value() << endl;
+                    rapidxml::print(std::cout, doc, 0);
+                    strcpy(buf, "Setting modified in the account.");
+                    return; // Don't keep the for running
+                }
+                    
+                // There shouldn't be a natural way to reach this else
+                else
+                    std::cerr << "How am I here? - Setting node not found";
+            }
+        }
+        // Same as before, this shouldn't happen if the fution is called correctly
+        std::cerr << "User '" << username << "' not found in the XML file." << std::endl;
+    }
     catch (const std::exception& e) 
     {
         std::cerr << "Exception: " << e.what() << std::endl;
