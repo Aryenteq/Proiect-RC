@@ -29,7 +29,7 @@ int main (int argc, char *argv[])
 
     // mesajul trimis
     int nr=0;
-    char buf[100];
+    char buf[1024];
 
     /* exista toate argumentele in linia de comanda? */
     if (argc != 3)
@@ -115,7 +115,7 @@ int main (int argc, char *argv[])
             serverClosed = true;
             break;
         }
-
+    
         // Display the received message
         printf("\n[client]Mesajul primit este: %s\n", buf);
 

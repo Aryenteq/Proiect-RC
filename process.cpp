@@ -50,7 +50,7 @@ void initialiseThread(thData* td, int &i, int &client)
     activeThreads.push_back(user);
 }
 
-void broadcastMessage(const std::string& messageText, const std::string& messageType, int senderID)
+void broadcastMessage(const std::string& messageText, int senderID)
 {
     std::lock_guard<std::mutex> lock(mtx);
     for (thData td : activeThreads)
@@ -68,10 +68,12 @@ void broadcastMessage(const std::string& messageText, const std::string& message
 void logIn(char*, thData&);
 void signUp(char*, thData&);
 void createHazard(char*, thData&);
-void changeSettings(char*, thData&);
+void createGasStation(char*, thData&);
+void changeAccountSettings(char*, thData&);
 
 // Function without parameters
 void showActiveThreads(char*, thData&);
+void showGasStations(char*, thData&);
 void userStatus(char*, thData&);
 void closeClient(char*, thData&);
 void defaultOption(char*, thData&);
@@ -82,16 +84,20 @@ void processCommand(char* buf, thData &tdL)
     void (*functionArray[])(char*, thData&) = {logIn, 
                                                 signUp,
                                                 createHazard,
-                                                changeSettings,
+                                                createGasStation,
+                                                changeAccountSettings,
                                                 showActiveThreads,
+                                                showGasStations,
                                                 userStatus,
                                                 closeClient,
                                                 defaultOption};
     const char* inputPossibilities[] = {"log in", 
                                         "sign up", 
                                         "hazard",
+                                        "gas",
                                         "set",
                                         "threads",
+                                        "stations",
                                         "status",
                                         "exit"};
 
@@ -103,7 +109,7 @@ void processCommand(char* buf, thData &tdL)
     {
         if(index == noOfFunctions - 1)
             break;
-        if (index <= 3) // To change when adding a new function with parameters
+        if (index <= 4) // To change when adding a new function with parameters
         {
             if (strncmp(buf, inputPossibilities[index], strlen(inputPossibilities[index])) == 0 && 
             strlen(buf) > strlen(inputPossibilities[index]) && 
@@ -181,6 +187,7 @@ void signUp(char* buf, thData &tdL)
     }
 }
 
+// TO DO: limit the speedlimit based on hazard
 void createHazard(char* buf, thData& tdL)
 {
     strcpy(buf, buf+7); // Get rid of "hazard "
@@ -247,8 +254,7 @@ void createHazard(char* buf, thData& tdL)
             messageText += " on ";
             messageText += edgeName;
             messageText += ".";
-            std::string messageType("Hazard");
-            broadcastMessage(messageText, messageType, tdL.idThread);
+            broadcastMessage(messageText, tdL.idThread);
             strcpy(buf, "Hazard added");
         } 
         catch (const std::exception& e) 
@@ -258,7 +264,78 @@ void createHazard(char* buf, thData& tdL)
     }
 }
 
-void changeSettings(char* buf, thData& tdL)
+void createGasStation(char* buf, thData& tdL)
+{
+    if(!tdL.userInfo.admin)
+    {
+        strcpy(buf, "You do not have admin permissions!");
+        return;
+    }
+    strcpy(buf, buf+4); // Get rid of "gas "
+    std::vector<std::string> parameters;
+    char* p = strtok(buf, " ");
+
+    while (p != nullptr) 
+    {
+        parameters.push_back(p);
+        p = strtok(nullptr, " ");
+    }
+    if(parameters.size() != 5)
+    {
+        strcpy(buf, "Syntax: gas <name> <from> <to> <gas price> <diesel price>");
+        return;
+    }
+    if(parameters[1]>parameters[2])
+        std::swap(parameters[1], parameters[2]);
+    if(isValidInteger(buf, parameters[1]) && isValidInteger(buf, parameters[2]) &&
+       isValidDouble(buf, parameters[3]) && isValidDouble(buf, parameters[4]))
+    {
+        std::string edgeName = mapGraph.getEdgeName(std::stoi(parameters[1]), std::stoi(parameters[2]));
+        if(edgeName == "")
+        {
+            strcpy(buf, "Street doesn't exist");
+            return;
+        }
+        try 
+        {
+            rapidxml::file<> xmlFile("gas.xml");
+            rapidxml::xml_document<> doc;
+            doc.parse<0>(xmlFile.data());
+
+            rapidxml::xml_node<>* newStationNode = doc.allocate_node(rapidxml::node_element, "station");
+            rapidxml::xml_node<>* nameNode = doc.allocate_node(rapidxml::node_element, "name", doc.allocate_string(parameters[0].c_str()));
+            rapidxml::xml_node<>* fromNode = doc.allocate_node(rapidxml::node_element, "from", doc.allocate_string(parameters[1].c_str()));
+            rapidxml::xml_node<>* toNode = doc.allocate_node(rapidxml::node_element, "to", doc.allocate_string(parameters[2].c_str()));
+            rapidxml::xml_node<>* gasNode = doc.allocate_node(rapidxml::node_element, "gas", doc.allocate_string(parameters[3].c_str()));
+            rapidxml::xml_node<>* dieselNode = doc.allocate_node(rapidxml::node_element, "diesel", doc.allocate_string(parameters[4].c_str()));
+
+            newStationNode->append_node(nameNode);
+            newStationNode->append_node(fromNode);
+            newStationNode->append_node(toNode);
+            newStationNode->append_node(gasNode);
+            newStationNode->append_node(dieselNode);
+            doc.first_node()->append_node(newStationNode);
+
+            std::ofstream outputFile("gas.xml");
+            outputFile << doc;
+            outputFile.close();
+
+            std::string messageText("New gas station: ");
+            messageText += parameters[0];
+            messageText += " on ";
+            messageText += edgeName;
+            messageText += ".";
+            broadcastMessage(messageText, tdL.idThread);
+            strcpy(buf, "Gas station added");
+        } 
+        catch (const std::exception& e) 
+        {
+            std::cerr << "Exception: " << e.what() << std::endl;
+        }
+    }
+}
+
+void changeAccountSettings(char* buf, thData& tdL)
 {
     strcpy(buf, buf+4); // Get rid of "set "
     char* p = strtok(buf, " ");
@@ -320,6 +397,40 @@ void showActiveThreads(char* buf, thData &tdL) {
         strcat(result, " ");
     }
     strcpy(buf, result);
+}
+
+void showGasStations(char* buf, thData &tdL)
+{
+    rapidxml::file<> xmlFile("gas.xml");
+    rapidxml::xml_document<> doc;
+    doc.parse<0>(xmlFile.data());
+
+    std::string stationsInfo("Gas stations: ");
+
+    rapidxml::xml_node<>* stationsNode = doc.first_node("stations");
+    if (stationsNode) 
+    {
+        for (rapidxml::xml_node<>* stationNode = stationsNode->first_node("station"); stationNode; stationNode = stationNode->next_sibling("station")) 
+        {
+            rapidxml::xml_node<>* nameNode = stationNode->first_node("name");
+            rapidxml::xml_node<>* fromNode = stationNode->first_node("from");
+            rapidxml::xml_node<>* toNode = stationNode->first_node("to");
+            rapidxml::xml_node<>* gasNode = stationNode->first_node("gas");
+            rapidxml::xml_node<>* dieselNode = stationNode->first_node("diesel");
+
+            // Concatenate station information into the buffer
+            std::string streetName = mapGraph.getEdgeName(std::stoi(fromNode->value()), std::stoi(toNode->value()));
+            stationsInfo += std::string("\n") + nameNode->value() + " on " + streetName + " -- gas price: " + gasNode->value() + ", diesel price: " + dieselNode->value();
+
+        }
+        std::cout<<stationsInfo;
+        strcpy(buf, stationsInfo.c_str());
+        //strcpy(buf, "Info printed in server terminal.");
+    }
+    else
+    {
+        strcpy(buf, "XML file is wrongly formatted.");
+    }
 }
 
 void userStatus(char* buf, thData &tdL)

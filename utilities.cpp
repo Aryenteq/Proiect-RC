@@ -7,6 +7,25 @@ bool isValidInteger(char* buf, const std::string& value)
     } 
     catch (const std::invalid_argument&) 
     {
+        strcpy(buf, "Invalid argument, use a natural number.");
+        return false;
+    } 
+    catch (const std::out_of_range&) 
+    {
+        strcpy(buf, "Number is too big");
+        return false;
+    }
+}
+
+bool isValidDouble(char* buf, const std::string& value) 
+{
+    try 
+    {
+        std::stod(value);
+        return true; // Conversion succeeded
+    } 
+    catch (const std::invalid_argument&) 
+    {
         strcpy(buf, "Invalid argument, use a number.");
         return false;
     } 

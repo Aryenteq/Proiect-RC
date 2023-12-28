@@ -1,0 +1,17 @@
+<stations>
+	<station>
+		<name>Gaz</name>
+		<from>0</from>
+		<to>1</to>
+		<gas>7.34</gas>
+		<diesel>7.45</diesel>
+	</station>
+	<station>
+		<name>petrol</name>
+		<from>0</from>
+		<to>1</to>
+		<gas>5.3</gas>
+		<diesel>45.3</diesel>
+	</station>
+</stations>
+

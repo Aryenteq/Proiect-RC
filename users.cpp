@@ -165,7 +165,7 @@ void updateUserSettings(char* buf, const char* username, const std::string& sett
                     cout << settingNode->value() << endl;
                     rapidxml::print(std::cout, doc, 0);
                     strcpy(buf, "Setting modified in the account.");
-                    return; // Don't keep the for running
+                    return; // Stop the for from searching
                 }
                     
                 // There shouldn't be a natural way to reach this else

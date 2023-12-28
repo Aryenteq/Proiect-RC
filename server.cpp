@@ -145,7 +145,7 @@ static void *treat(void *arg)
 void raspunde(void *arg)
 {
   int i = 0;
-  char buf[100];
+  char buf[1024];
   struct thData *tdL = (struct thData *)arg;
 
   int bytesRead = read(tdL->cl, &buf, sizeof(buf));
