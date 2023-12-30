@@ -1,5 +1,8 @@
 #include <algorithm> // remove_if
 #include <mutex>
+#include <chrono>
+#include <thread>
+#include <future>
 
 std::mutex mtx; 
 struct userInformation
@@ -23,6 +26,9 @@ typedef struct thData{
 // Therefore, the activeThreads pointers are invalid
 // ATM doing a copy of the thData* td, not efficient but works
 std::vector<thData> activeThreads;
+
+std::mutex weatherMutex;
+std::string globalWeather("Sunny");
 
 
 #include "users.cpp"
@@ -50,7 +56,7 @@ void initialiseThread(thData* td, int &i, int &client)
     activeThreads.push_back(user);
 }
 
-void broadcastMessage(const std::string& messageText, int senderID)
+void broadcastMessage(const std::string& messageText, const std::string& type, int senderID)
 {
     std::lock_guard<std::mutex> lock(mtx);
     for (thData td : activeThreads)
@@ -58,9 +64,21 @@ void broadcastMessage(const std::string& messageText, int senderID)
         // Skip the sender thread
         if (td.idThread == senderID)
             continue;
-        if(td.userInfo.showHazards)
+        if(type=="hazard")
+        {
+            if(td.userInfo.showHazards)
+                if (write(td.cl, messageText.c_str(), messageText.size() + 1) <= 0)
+                    std::cerr << "Error writing to client: " << strerror(errno) << std::endl;
+        } else if(type=="weather")
+        {
+             if(td.userInfo.showWeather)
+                if (write(td.cl, messageText.c_str(), messageText.size() + 1) <= 0)
+                    std::cerr << "Error writing to client: " << strerror(errno) << std::endl;
+        } else if(type=="priority") // New gas station - everyone should know this
+        {
             if (write(td.cl, messageText.c_str(), messageText.size() + 1) <= 0)
-                std::cerr << "Error writing to client: " << strerror(errno) << std::endl;
+                    std::cerr << "Error writing to client: " << strerror(errno) << std::endl;
+        }
     }
 }
 
@@ -68,11 +86,15 @@ void broadcastMessage(const std::string& messageText, int senderID)
 void logIn(char*, thData&);
 void signUp(char*, thData&);
 void createHazard(char*, thData&);
+void removeHazard(char*, thData &);
 void createGasStation(char*, thData&);
 void changeAccountSettings(char*, thData&);
+void changeWeather(char*, thData&);
 
 // Function without parameters
+void showWeather(char*, thData&);
 void showActiveThreads(char*, thData&);
+void showHazards(char*, thData&);
 void showGasStations(char*, thData&);
 void userStatus(char*, thData&);
 void closeClient(char*, thData&);
@@ -84,9 +106,13 @@ void processCommand(char* buf, thData &tdL)
     void (*functionArray[])(char*, thData&) = {logIn, 
                                                 signUp,
                                                 createHazard,
+                                                removeHazard,
                                                 createGasStation,
                                                 changeAccountSettings,
+                                                changeWeather,
+                                                showWeather,
                                                 showActiveThreads,
+                                                showHazards,
                                                 showGasStations,
                                                 userStatus,
                                                 closeClient,
@@ -94,39 +120,36 @@ void processCommand(char* buf, thData &tdL)
     const char* inputPossibilities[] = {"log in", 
                                         "sign up", 
                                         "hazard",
+                                        "remove",
                                         "gas",
                                         "set",
+                                        "weather",
+                                        "meteo",
                                         "threads",
+                                        "dangers",
                                         "stations",
                                         "status",
                                         "exit"};
 
     size_t noOfFunctions = sizeof(functionArray) / sizeof(functionArray[0]);
     size_t index;
-    bool foundCommand = false;
     
-    for (index = 0; index < noOfFunctions; ++index) 
+    for (index = 0; index < noOfFunctions; ++index)
     {
         if(index == noOfFunctions - 1)
             break;
-        if (index <= 4) // To change when adding a new function with parameters
+        if (index <= 6) // To change when adding a new function with parameters
         {
             if (strncmp(buf, inputPossibilities[index], strlen(inputPossibilities[index])) == 0 && 
             strlen(buf) > strlen(inputPossibilities[index]) && 
             buf[strlen(inputPossibilities[index])] == ' ')
-            {
-                foundCommand = true;
                 break;
-            }
-        } 
-        else 
+        }
+        else
         {
             // For other commands (w/o parameters)
-            if (strcmp(buf, inputPossibilities[index]) == 0) 
-            {
-                foundCommand = true;
+            if (strcmp(buf, inputPossibilities[index]) == 0)
                 break;
-            }
         }
     }
     (*functionArray[index])(buf, tdL);
@@ -187,42 +210,34 @@ void signUp(char* buf, thData &tdL)
     }
 }
 
-// TO DO: limit the speedlimit based on hazard
 void createHazard(char* buf, thData& tdL)
 {
     strcpy(buf, buf+7); // Get rid of "hazard "
+    std::vector<std::string> parameters;
     char* p = strtok(buf, " ");
-    if(p == nullptr)
+
+    while (p != nullptr) 
+    {
+        parameters.push_back(p);
+        p = strtok(nullptr, " ");
+    }
+    if(parameters.size() != 3)
     {
         strcpy(buf, "Syntax: hazard <from> <to> <type>");
         return;
     }
-    std::string fromString(p);
-    p = strtok(nullptr, " ");
-    if(p == nullptr)
-    {
-        strcpy(buf, "Syntax: hazard <from> <to> <type>");
-        return;
-    }
-    std::string toString(p);
-    p = strtok(nullptr, " ");
-    if(p == nullptr)
-    {
-        strcpy(buf, "Syntax: hazard <from> <to> <type>");
-        return;
-    }
-    std::string type(p);
-    if(type!="pathole" && type!="accident" && type!="construction" && type!="other")
+    if(parameters[2]!="pathole" && parameters[2]!="accident" && 
+       parameters[2]!="construction" && parameters[2]!="other")
     {
         strcpy(buf, "Available hazards: pathole, accident, construction, other");
         return;
     }
-    if(fromString>toString)
-        std::swap(toString, fromString);
-    if(isValidInteger(buf, fromString) && isValidInteger(buf, toString))
+    if(parameters[0]>parameters[1])
+        std::swap(parameters[0], parameters[1]);
+    if(isValidInteger(buf, parameters[0]) && isValidInteger(buf, parameters[1]))
     {
-        int from = std::stoi(fromString);
-        int to = std::stoi(toString);
+        int from = std::stoi(parameters[0]);
+        int to = std::stoi(parameters[1]);
         std::string edgeName = mapGraph.getEdgeName(from, to);
         if(edgeName == "")
         {
@@ -236,9 +251,9 @@ void createHazard(char* buf, thData& tdL)
             doc.parse<0>(xmlFile.data());
 
             rapidxml::xml_node<>* newHazardNode = doc.allocate_node(rapidxml::node_element, "hazard");
-            rapidxml::xml_node<>* fromNode = doc.allocate_node(rapidxml::node_element, "from", doc.allocate_string(fromString.c_str()));
-            rapidxml::xml_node<>* toNode = doc.allocate_node(rapidxml::node_element, "to", doc.allocate_string(toString.c_str()));
-            rapidxml::xml_node<>* typeNode = doc.allocate_node(rapidxml::node_element, "type", doc.allocate_string(type.c_str()));
+            rapidxml::xml_node<>* fromNode = doc.allocate_node(rapidxml::node_element, "from", doc.allocate_string(parameters[0].c_str()));
+            rapidxml::xml_node<>* toNode = doc.allocate_node(rapidxml::node_element, "to", doc.allocate_string(parameters[1].c_str()));
+            rapidxml::xml_node<>* typeNode = doc.allocate_node(rapidxml::node_element, "type", doc.allocate_string(parameters[2].c_str()));
                         
             newHazardNode->append_node(fromNode);
             newHazardNode->append_node(toNode);
@@ -249,18 +264,110 @@ void createHazard(char* buf, thData& tdL)
             outputFile << doc;
             outputFile.close();
 
+            // Edit the map.xml file to reduce the speedlimit
+            // "pathole" and "other" won't affect the driving speed
+            bool speedChanged = 0;
+            if(parameters[2]=="accident")
+                speedChanged = changeAverageSpeed(from, to, -30);
+            else if(parameters[2]=="construction")
+                speedChanged = changeAverageSpeed(from, to, -20);
+
             std::string messageText("New hazard: ");
-            messageText += type;
+            messageText += parameters[2];
             messageText += " on ";
             messageText += edgeName;
             messageText += ".";
-            broadcastMessage(messageText, tdL.idThread);
+            broadcastMessage(messageText, std::string("hazard"), tdL.idThread);
             strcpy(buf, "Hazard added");
         } 
         catch (const std::exception& e) 
         {
             std::cerr << "Exception: " << e.what() << std::endl;
         }
+    }
+}
+
+void removeHazard(char* buf, thData &tdL)
+{
+    strcpy(buf, buf+7); // Get rid of "remove "
+    std::vector<std::string> parameters;
+    char* p = strtok(buf, " ");
+
+    while (p != nullptr)
+    {
+        parameters.push_back(p);
+        p = strtok(nullptr, " ");
+    }
+    if(parameters.size() != 3)
+    {
+        strcpy(buf, "Syntax: remove <from> <to> <type>");
+        return;
+    }
+    if(parameters[2]!="pathole" && parameters[2]!="accident" && 
+       parameters[2]!="construction" && parameters[2]!="other")
+    {
+        strcpy(buf, "Available hazards: pathole, accident, construction, other");
+        return;
+    }
+    if(parameters[0]>parameters[1])
+        std::swap(parameters[0], parameters[1]);
+    if(isValidInteger(buf, parameters[0]) && isValidInteger(buf, parameters[1]))
+    {
+        int from = std::stoi(parameters[0]);
+        int to = std::stoi(parameters[1]);
+        std::string edgeName = mapGraph.getEdgeName(from, to);
+        if(edgeName == "")
+        {
+            strcpy(buf, "Edge doesn't exist");
+            return;
+        }
+        try 
+        {
+        rapidxml::file<> xmlFile("hazards.xml");
+        rapidxml::xml_document<> doc;
+        doc.parse<0>(xmlFile.data());
+
+        // Loooong searching process
+        rapidxml::xml_node<>* hazardsNode = doc.first_node("hazards");
+        if (hazardsNode) 
+        {
+        for (rapidxml::xml_node<>* hazardNode = doc.first_node("hazards")->first_node("hazard"); hazardNode; hazardNode = hazardNode->next_sibling("hazard"))
+        {
+            rapidxml::xml_node<>* fromNode = hazardNode->first_node("from");
+            rapidxml::xml_node<>* toNode = hazardNode->first_node("to");
+            rapidxml::xml_node<>* typeNode = hazardNode->first_node("type");
+
+            if (fromNode && fromNode->value() == parameters[0] &&
+                toNode && toNode->value() == parameters[1] &&
+                typeNode && typeNode->value() == parameters[2]) 
+            { // Hazard found
+                doc.first_node()->remove_node(hazardNode);
+                std::ofstream outputFile("hazards.xml");
+                outputFile << doc;
+                outputFile.close();
+                
+                bool speedChanged = 0;
+                if(parameters[2]=="accident")
+                    speedChanged = changeAverageSpeed(from, to, 30);
+                else if(parameters[2]=="construction")
+                    speedChanged = changeAverageSpeed(from, to, 20);
+
+                std::string messageText("Hazard removed: ");
+                messageText += parameters[2];
+                messageText += " on ";
+                messageText += edgeName;
+                messageText += ".";
+                broadcastMessage(messageText, std::string("hazard"), tdL.idThread);
+                strcpy(buf, "Hazard removed");
+                return;
+            }
+        }
+        strcpy(buf, "Hazard doesn't exist");
+        }
+    } catch (const std::exception& e) 
+    {
+        std::cerr << "Exception: " << e.what() << std::endl;
+    }
     }
 }
 
@@ -325,7 +432,7 @@ void createGasStation(char* buf, thData& tdL)
             messageText += " on ";
             messageText += edgeName;
             messageText += ".";
-            broadcastMessage(messageText, tdL.idThread);
+            broadcastMessage(messageText, std::string("priority"), tdL.idThread);
             strcpy(buf, "Gas station added");
         } 
         catch (const std::exception& e) 
@@ -341,14 +448,14 @@ void changeAccountSettings(char* buf, thData& tdL)
     char* p = strtok(buf, " ");
     if(p == nullptr)
     {
-        strcpy(buf, "Sintax: set <setting> <0/1>");
+        strcpy(buf, "Syntax: set <setting> <0/1>");
         return;
     }
     std::string setting(p);
     p = strtok(nullptr, " ");
     if(p == nullptr)
     {
-        strcpy(buf, "Sintax: set <setting> <0/1>");
+        strcpy(buf, "Syntax: set <setting> <0/1>");
         return;
     }
     if(setting!="hazards" && setting!="weather" && setting!="speedlimit" && setting!="admin")
@@ -385,18 +492,65 @@ void changeAccountSettings(char* buf, thData& tdL)
     }
 }
 
-void showActiveThreads(char* buf, thData &tdL) {
-    char result[100];
-    strcpy(result, "Active threads: ");
-    for(int i=0; i<activeThreads.size(); i++) {
-        printf("%d ", activeThreads[i].idThread);
-        std::cout<<"hazard "<<activeThreads[i].userInfo.showHazards<<endl;
-        char threadStr[5];
-        sprintf(threadStr, "%d", activeThreads[i].idThread);
-        strcat(result, threadStr);
-        strcat(result, " ");
+void changeWeather(char* buf, thData& tdL)
+{
+    if(!tdL.userInfo.admin)
+    {
+        strcpy(buf, "You do not have admin permissions!");
+        return;
     }
-    strcpy(buf, result);
+    std::lock_guard<std::mutex> lock(weatherMutex);
+
+    strcpy(buf, buf+8); // Get rid of "weather "
+    globalWeather = buf;
+    std::string messageText("Weather changed to: ");
+    messageText += globalWeather;
+    broadcastMessage(messageText, std::string("weather"), tdL.idThread);
+    strcpy(buf, "Weather changed!");
+}
+
+void showWeather(char* buf, thData& tdL)
+{
+    std::string messageText("Current weather: ");
+    messageText += globalWeather;
+    strcpy(buf, messageText.c_str());
+}
+
+void showActiveThreads(char* buf, thData &tdL) 
+{
+    std::string result("Active threads: ");
+    for(int i=0; i<activeThreads.size(); i++) 
+        result += std::to_string(activeThreads[i].idThread) + " ";
+    strcpy(buf, result.c_str());
+}
+
+void showHazards(char* buf, thData& tdL)
+{
+    rapidxml::file<> xmlFile("hazards.xml");
+    rapidxml::xml_document<> doc;
+    doc.parse<0>(xmlFile.data());
+
+    std::string hazardsInfo("Active hazards: ");
+
+    rapidxml::xml_node<>* hazardsNode = doc.first_node("hazards");
+    if (hazardsNode) 
+    {
+        for (rapidxml::xml_node<>* hazardNode = hazardsNode->first_node("hazard"); hazardNode; hazardNode = hazardNode->next_sibling("hazard")) 
+        {
+            rapidxml::xml_node<>* fromNode = hazardNode->first_node("from");
+            rapidxml::xml_node<>* toNode = hazardNode->first_node("to");
+            rapidxml::xml_node<>* typeNode = hazardNode->first_node("type");
+
+            // Concatenate hazard information into the buffer
+            std::string streetName = mapGraph.getEdgeName(std::stoi(fromNode->value()), std::stoi(toNode->value()));
+            hazardsInfo += std::string("\n") + typeNode->value() + " on " + streetName;
+        }
+        strcpy(buf, hazardsInfo.c_str());
+    }
+    else
+    {
+        strcpy(buf, "XML file is wrongly formatted.");
+    }
 }
 
 void showGasStations(char* buf, thData &tdL)
@@ -435,18 +589,18 @@ void showGasStations(char* buf, thData &tdL)
 
 void userStatus(char* buf, thData &tdL)
 {
-    std::cout << "ID Thread: " << tdL.idThread << std::endl <<
-    "shouldStop: " << tdL.userInfo.shouldStop << std::endl <<
-    "showHazards: " << tdL.userInfo.showHazards << std::endl <<
-    "showWeather: " << tdL.userInfo.showWeather << std::endl <<
-    "showSpeedLimit: " << tdL.userInfo.showSpeedLimit << std::endl <<
-    "admin: " << tdL.userInfo.admin << std::endl;
+    std::string result;
+    result += "\nID Thread: " + std::to_string(tdL.idThread) + std::string("\n") + 
+    "shouldStop: " + std::to_string(tdL.userInfo.shouldStop) + std::string("\n") + 
+    "showHazards: " + std::to_string(tdL.userInfo.showHazards) + std::string("\n") + 
+    "showWeather: " + std::to_string(tdL.userInfo.showWeather) + std::string("\n") + 
+    "showSpeedLimit: " + std::to_string(tdL.userInfo.showSpeedLimit) + std::string("\n") + 
+    "admin: " + std::to_string(tdL.userInfo.admin) + std::string("\n") + "connectedUsername: ";
     if(tdL.userInfo.connectedUsername)
-    //if(!tdL.userInfo.connectedUsername.empty())
-        std::cout<<"connectedUsername: " << tdL.userInfo.connectedUsername << std::endl;
+        result += tdL.userInfo.connectedUsername;
     else
-        std::cout<<"connectedUsername: none"<<std::endl;
-    strcpy(buf, "Status printed in server terminal");
+        result += "none";
+    strcpy(buf, result.c_str());
 }
 
 void closeClient(char* buf, thData &tdL) 
@@ -465,3 +619,5 @@ void defaultOption(char* buf, thData &tdL)
 {
     strcpy(buf, "Invalid command");
 }
+
+

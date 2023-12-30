@@ -13,5 +13,12 @@
 		<gas>5.3</gas>
 		<diesel>45.3</diesel>
 	</station>
+	<station>
+		<name>LaMarcel</name>
+		<from>2</from>
+		<to>3</to>
+		<gas>6.46</gas>
+		<diesel>9.12</diesel>
+	</station>
 </stations>
 

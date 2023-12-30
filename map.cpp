@@ -135,3 +135,37 @@ void createGraph()
     // Display the graph
     mapGraph.displayGraph();
 }
+
+// Returns 1 if the averageSpeed was changed
+// 0 otherwise (the speed was already too low to change furthermore)
+bool changeAverageSpeed(int from, int to, int delta)
+{
+    rapidxml::file<> xmlFile("map.xml");
+    rapidxml::xml_document<> doc;
+    doc.parse<0>(xmlFile.data());
+
+    rapidxml::xml_node<> *root = doc.first_node();
+    for (rapidxml::xml_node<> *edge = root->first_node("edge"); edge; edge = edge->next_sibling("edge"))
+    {
+        int from_value = std::atoi(edge->first_node("from")->value());
+        int to_value = std::atoi(edge->first_node("to")->value());
+
+        if (from_value == from && to_value == to)
+        {
+            int avgSpeed = std::atoi(edge->first_node("averagespeed")->value()) + delta;
+
+            // Don't do any changes if the value becomes too small
+            if(avgSpeed>=10)
+            {
+                edge->first_node("averagespeed")->first_node()->value(doc.allocate_string(std::to_string(avgSpeed).c_str()));
+                std::ofstream outputFile("map.xml");
+                outputFile << doc;
+                outputFile.close();
+                return 1;
+            }
+            return 0;
+        }
+    }
+    // Edge not found
+    return 0;
+}

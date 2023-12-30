@@ -29,7 +29,7 @@
 		<hazards>false</hazards>
 		<weather>false</weather>
 		<speedlimit>false</speedlimit>
-		<admin>false</admin>
+		<admin>true</admin>
 	</user>
 	<user>
 		<username>testing</username>

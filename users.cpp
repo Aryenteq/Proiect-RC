@@ -157,13 +157,13 @@ void updateUserSettings(char* buf, const char* username, const std::string& sett
                 rapidxml::xml_node<>* settingNode = userNode->first_node(setting.c_str());
                 if (settingNode)
                 {
-                    settingNode->value(doc.allocate_string(boolToChar(value)));
+                    // Even though you are on the desired node, you need to access first_node()
+                    // to change its content - Took a whole day to discover
+                    settingNode->first_node()->value(doc.allocate_string(boolToChar(value)));
                     std::ofstream outFile("users.xml");
                     outFile << doc;
                     outFile.close();
-    
-                    cout << settingNode->value() << endl;
-                    rapidxml::print(std::cout, doc, 0);
+
                     strcpy(buf, "Setting modified in the account.");
                     return; // Stop the for from searching
                 }

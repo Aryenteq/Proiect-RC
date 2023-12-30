@@ -3,7 +3,7 @@ bool isValidInteger(char* buf, const std::string& value)
     try 
     {
         std::stoi(value);
-        return true; // Conversion succeeded
+        return true;
     } 
     catch (const std::invalid_argument&) 
     {
@@ -22,7 +22,7 @@ bool isValidDouble(char* buf, const std::string& value)
     try 
     {
         std::stod(value);
-        return true; // Conversion succeeded
+        return true;
     } 
     catch (const std::invalid_argument&) 
     {
