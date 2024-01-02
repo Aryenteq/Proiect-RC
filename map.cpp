@@ -8,6 +8,7 @@
 #include <algorithm> // reverse
 
 Graph mapGraph(1);
+std::vector<int> shortestPath;
 
 void Graph::addEdge(int source, int destination, int length, std::string streetName, int speedLimit, int averageSpeed)
 {
@@ -39,18 +40,13 @@ void Graph::displayGraph()
 }
 
 
-double Graph::Dijkstra(int startNode, int endNode, std::vector<int>& shortestPath) {
+double Graph::Dijkstra(int startNode, int endNode, std::vector<int>& shortestPath)
+{
     shortestPath.clear();
-    // Priority queue to store vertices with minimum estimated times
     std::priority_queue<std::pair<double, int>, std::vector<std::pair<double, int>>, std::greater<std::pair<double, int>>> pq;
-
-    // Vector to store estimated times to reach each node
     std::vector<double> estimatedTime(vertices, std::numeric_limits<double>::infinity());
-
-    // Vector to store parent vertex for each vertex in the shortest path
     std::vector<int> parent(vertices, -1);
-
-    // Initialize starting node with estimated time 0
+    
     pq.push(std::make_pair(0.0, startNode));
     estimatedTime[startNode] = 0.0;
 
@@ -67,24 +63,42 @@ double Graph::Dijkstra(int startNode, int endNode, std::vector<int>& shortestPat
             if (estimatedTime[v] > estimatedTime[u] + edgeTime) 
             {
                 estimatedTime[v] = estimatedTime[u] + edgeTime;
-                parent[v] = u;  // Update parent for vertex v
+                parent[v] = u; 
                 pq.push(std::make_pair(estimatedTime[v], v));
             }
         }
     }
-    // Reconstruct the shortest path from endNode to startNode
+    // Reconstruct shortest path
     int currentVertex = endNode;
     while (currentVertex != -1)
     {
         shortestPath.push_back(currentVertex);
         currentVertex = parent[currentVertex];
     }
-
-    // Reverse the path to get it from startNode to endNode
     std::reverse(shortestPath.begin(), shortestPath.end());
-
-    // The estimated time to reach the end node
     return estimatedTime[endNode];
+}
+
+int Graph::lastNode() const 
+{
+    int maxNodeNumber = -1;
+    for (const auto& edges : adjacencyList)
+        for (const auto& edge : edges)
+            maxNodeNumber = std::max({maxNodeNumber, edge.destination});
+    return maxNodeNumber;
+}
+
+bool Graph::verifySpeed(int from, int to, int speed)
+{
+    for (const auto& edge : adjacencyList[from]) 
+    {
+        if (edge.destination == to)
+        {
+            std::cout<<speed<<" "<<edge.speedLimit;
+            return speed > edge.speedLimit;
+        }
+    }
+    return false; 
 }
 
 std::string Graph::getEdgeName(int from, int to)

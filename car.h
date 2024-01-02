@@ -6,6 +6,12 @@ private:
     int speed;
 public:
     Car();
-    void ChangeSpeed(int);
-    void ChangeLocation(int,int);
+    Car& operator=(const Car& other) = default;
+    Car& operator=(Car&& other) noexcept = default;
+    void changeSpeed(int);
+    void changeFrom(int);
+    int getFrom();
+    int getTo();
+    int getSpeed();
+    void changeLocation(int,int);
 };

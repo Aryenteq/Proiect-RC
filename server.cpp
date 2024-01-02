@@ -36,11 +36,10 @@ void raspunde(void *);
 int main ()
 {
   createGraph();
-  std::vector<int> shortestPath;
   std::cout<<mapGraph.Dijkstra(0,3, shortestPath)<<std::endl;
   //for(int i=0;i<shortestPath.size();i++)
   //std::cout<<shortestPath[i]<<" ";
-  std::cout<<mapGraph.Dijkstra(0,1,shortestPath)<<std::endl;
+  std::cout<<mapGraph.Dijkstra(0,0,shortestPath)<<std::endl;
 
   //vector<Car> cars;
 

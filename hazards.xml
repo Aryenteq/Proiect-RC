@@ -4,5 +4,15 @@
 		<to>1</to>
 		<type>pathole</type>
 	</hazard>
+	<hazard>
+		<from>1</from>
+		<to>2</to>
+		<type>pathole</type>
+	</hazard>
+	<hazard>
+		<from>1</from>
+		<to>2</to>
+		<type>pathole</type>
+	</hazard>
 </hazards>
 

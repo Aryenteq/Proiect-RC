@@ -16,10 +16,14 @@
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+
+#include <vector>
+#include "map.cpp"
+#include "utilities.cpp"
+
 int port;
 int sd;
-std::string constantMessage("status");
-
+std::string constantMessage("speed");
 
 std::atomic<bool> stopThread(false);
 std::condition_variable cv;
@@ -56,6 +60,7 @@ void StopThread()
 
 int main(int argc, char *argv[])
 {
+    createGraph();
     struct sockaddr_in server;
     int nr = 0;
     char buf[1024];
