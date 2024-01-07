@@ -31,5 +31,45 @@
 		<speedlimit>100</speedlimit>
 		<averagespeed>40</averagespeed>
 	</edge>
+	<edge>
+		<from>3</from>
+		<to>4</to>
+		<name>Strada NuVrei</name>
+		<length>20</length>
+		<speedlimit>50</speedlimit>
+		<averagespeed>46</averagespeed>
+	</edge>
+	<edge>
+		<from>1</from>
+		<to>5</to>
+		<name>Strada Santinela</name>
+		<length>120</length>
+		<speedlimit>90</speedlimit>
+		<averagespeed>80</averagespeed>
+	</edge>
+	<edge>
+		<from>3</from>
+		<to>6</to>
+		<name>Strada Adevarul Si Numai Adevarul</name>
+		<length>300</length>
+		<speedlimit>120</speedlimit>
+		<averagespeed>116</averagespeed>
+	</edge>
+	<edge>
+		<from>5</from>
+		<to>6</to>
+		<name>Strada Martorii Lui Iehova</name>
+		<length>140</length>
+		<speedlimit>50</speedlimit>
+		<averagespeed>55</averagespeed>
+	</edge>
+	<edge>
+		<from>2</from>
+		<to>7</to>
+		<name>Strada Strazilor</name>
+		<length>70</length>
+		<speedlimit>50</speedlimit>
+		<averagespeed>35</averagespeed>
+	</edge>
 </graph>
 
