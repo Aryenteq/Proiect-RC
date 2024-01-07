@@ -29,6 +29,22 @@
 		<hazards>false</hazards>
 		<weather>false</weather>
 		<speedlimit>false</speedlimit>
+		<admin>true</admin>
+	</user>
+	<user>
+		<username>testing</username>
+		<password>smth</password>
+		<hazards>false</hazards>
+		<weather>false</weather>
+		<speedlimit>false</speedlimit>
+		<admin>false</admin>
+	</user>
+	<user>
+		<username>ffff</username>
+		<password>ffff</password>
+		<hazards>true</hazards>
+		<weather>false</weather>
+		<speedlimit>false</speedlimit>
 		<admin>false</admin>
 	</user>
 </users>

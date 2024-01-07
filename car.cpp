@@ -7,12 +7,32 @@ Car::Car()
     this->to=1;
 }
 
-void Car::ChangeSpeed(int speed)
+void Car::changeSpeed(int speed)
 {
     this->speed=speed;
 }
 
-void Car::ChangeLocation(int to, int from)
+void Car::changeFrom(int from)
+{
+    this->from=from;
+}
+
+int Car::getFrom()
+{
+    return this->from;
+}
+
+int Car::getTo()
+{
+    return this->to;
+}
+
+int Car::getSpeed()
+{
+    return this->speed;
+}
+
+void Car::changeLocation(int to, int from)
 {
     if(to<from)
         std::swap(to, from);

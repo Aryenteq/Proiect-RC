@@ -1,35 +1,35 @@
- <?xml version="1.0" encoding="UTF-8"?>
 <graph>
-    <edge>
-        <from>0</from>
-        <to>1</to>
-        <name>Strada exemplu</name>
-        <length>100</length>
-        <speedlimit>50</speedlimit>
-        <averagespeed>45</averagespeed>
-    </edge>
-    <edge>
-        <from>0</from>
-        <to>2</to>
-        <name>Strada Lapusneanu</name>
-        <length>400</length>
-        <speedlimit>50</speedlimit>
-        <averagespeed>40</averagespeed>
-    </edge>
-    <edge>
-        <from>1</from>
-        <to>2</to>
-        <name>Strada Soarelui</name>
-        <length>1000</length>
-        <speedlimit>130</speedlimit>
-        <averagespeed>130</averagespeed>
-    </edge>
-    <edge>
-        <from>2</from>
-        <to>3</to>
-        <name>Strada Mihai Viteazu</name>
-        <length>70</length>
-        <speedlimit>100</speedlimit>
-        <averagespeed>70</averagespeed>
-    </edge>
-</graph> 
+	<edge>
+		<from>0</from>
+		<to>1</to>
+		<name>Strada exemplu</name>
+		<length>100</length>
+		<speedlimit>50</speedlimit>
+		<averagespeed>15</averagespeed>
+	</edge>
+	<edge>
+		<from>0</from>
+		<to>2</to>
+		<name>Strada Lapusneanu</name>
+		<length>400</length>
+		<speedlimit>50</speedlimit>
+		<averagespeed>40</averagespeed>
+	</edge>
+	<edge>
+		<from>1</from>
+		<to>2</to>
+		<name>Strada Soarelui</name>
+		<length>1000</length>
+		<speedlimit>130</speedlimit>
+		<averagespeed>110</averagespeed>
+	</edge>
+	<edge>
+		<from>2</from>
+		<to>3</to>
+		<name>Strada Mihai Viteazu</name>
+		<length>70</length>
+		<speedlimit>100</speedlimit>
+		<averagespeed>40</averagespeed>
+	</edge>
+</graph>
+

@@ -4,35 +4,5 @@
 		<to>1</to>
 		<type>pathole</type>
 	</hazard>
-	<hazard>
-		<from>0</from>
-		<to>1</to>
-		<type>pathole</type>
-	</hazard>
-	<hazard>
-		<from>0</from>
-		<to>1</to>
-		<type>pathole</type>
-	</hazard>
-	<hazard>
-		<from>0</from>
-		<to>1</to>
-		<type>pathole</type>
-	</hazard>
-	<hazard>
-		<from>0</from>
-		<to>1</to>
-		<type>ff</type>
-	</hazard>
-	<hazard>
-		<from>0</from>
-		<to>1</to>
-		<type>ffff</type>
-	</hazard>
-	<hazard>
-		<from>0</from>
-		<to>1</to>
-		<type>pathole</type>
-	</hazard>
 </hazards>
 
