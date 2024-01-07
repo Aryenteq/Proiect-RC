@@ -44,7 +44,6 @@ int main()
   if ((sd = socket(AF_INET, SOCK_STREAM, 0)) == -1)
   {
     std::cerr << "[server]Eroare la socket(): " << strerror(errno) << std::endl;
-    // perror ("[server]Eroare la socket().\n");
     return errno;
   }
   /* utilizarea optiunii SO_REUSEADDR */
@@ -67,7 +66,6 @@ int main()
   if (bind(sd, (struct sockaddr *)&server, sizeof(struct sockaddr)) == -1)
   {
     std::cerr << "[server]Eroare la bind(): " << strerror(errno) << std::endl;
-    // perror ("[server]Eroare la bind().\n");
     return errno;
   }
 
@@ -75,13 +73,9 @@ int main()
   if (listen(sd, 2) == -1)
   {
     std::cerr << "[server]Eroare la listen(): " << strerror(errno) << std::endl;
-    // perror ("[server]Eroare la listen().\n");
     return errno;
   }
-  /* servim in mod concurent client// Save the changes to the XML file
-    std::ofstream file("users.xml");
-    file << doc;
-    file.close();ii...folosind thread-uri */
+
   while (1)
   {
     int client;
@@ -91,22 +85,19 @@ int main()
     printf("[server]Asteptam la portul %d...\n", PORT);
     fflush(stdout);
 
-    // client= malloc(sizeof(int));
     /* acceptam un client (stare blocanta pina la realizarea conexiunii) */
     if ((client = accept(sd, (struct sockaddr *)&from, (socklen_t *)&length)) < 0)
     {
       std::cerr << "[server]Eroare la accept(): " << strerror(errno) << std::endl;
-      // perror ("[server]Eroare la accept().\n");
       continue;
     }
 
     /* s-a realizat conexiunea, se astepta mesajul */
-
     td = (struct thData *)malloc(sizeof(struct thData));
 
     initialiseThread(td, i, client);
     pthread_create(&th[i], NULL, &treat, td);
-  } // while
+  }
 };
 
 static void *treat(void *arg)

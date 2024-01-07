@@ -54,10 +54,8 @@ void ParallelMessage()
 
 void StopThreads()
 {
-    {
-        std::lock_guard<std::mutex> lock(cvMutex);
-        stopThreads = true;
-    }
+    std::lock_guard<std::mutex> lock(cvMutex);
+    stopThreads = true;
     cv.notify_all(); // Notify all threads to wake up immediately
 }
 

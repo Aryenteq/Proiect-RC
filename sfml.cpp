@@ -120,19 +120,17 @@ void drawEdges(const sf::Text &outputText, const std::vector<sf::Vector2f> &node
     {
         for (const Edge &edge : graph.getAdjacencyList(i))
         {
-            // Calculate center points for edges
+            // Center points
             sf::Vector2f start = nodePositions[i];
             sf::Vector2f end = nodePositions[edge.destination];
 
-            // Calculate normalized direction vector
+            // Normalized direction vector - some math
             sf::Vector2f dir = end - start;
             float length = std::sqrt(dir.x * dir.x + dir.y * dir.y);
             dir /= length;
-
-            // Calculate offset for thicker line
             sf::Vector2f offset(-dir.y, dir.x);
 
-            // Draw thicker light gray line with black borders
+            // Edge rectangle
             sf::ConvexShape edgeShape;
             edgeShape.setPointCount(4);
             edgeShape.setPoint(0, start + offset * EDGE_THICKNESS / 2.0f);
@@ -141,7 +139,7 @@ void drawEdges(const sf::Text &outputText, const std::vector<sf::Vector2f> &node
             edgeShape.setPoint(3, start - offset * EDGE_THICKNESS / 2.0f);
 
             // Based on path vector, color the nodes with blue (dijkstra)
-           bool currentEdgeInPath = std::find(path.begin(), path.end(), i) != path.end() &&
+            bool currentEdgeInPath = std::find(path.begin(), path.end(), i) != path.end() &&
                                      std::find(path.begin(), path.end(), edge.destination) != path.end();
 
             if (currentEdgeInPath)
@@ -151,7 +149,7 @@ void drawEdges(const sf::Text &outputText, const std::vector<sf::Vector2f> &node
 
             window.draw(edgeShape);
 
-            // Draw black borders
+            // Borders
             sf::VertexArray lineBlack(sf::LinesStrip, 5);
             lineBlack[0].position = start + offset * EDGE_THICKNESS / 2.0f;
             lineBlack[1].position = start - offset * EDGE_THICKNESS / 2.0f;
@@ -159,34 +157,22 @@ void drawEdges(const sf::Text &outputText, const std::vector<sf::Vector2f> &node
             lineBlack[3].position = end + offset * EDGE_THICKNESS / 2.0f;
             lineBlack[4].position = start + offset * EDGE_THICKNESS / 2.0f;
 
-            for (int i = 0; i < 5; ++i)
-            {
-                lineBlack[i].color = sf::Color(0, 0, 0); // Black color
-            }
+            for (int i = 0; i < 5; i++)
+                lineBlack[i].color = sf::Color(0, 0, 0); // Black
 
             window.draw(lineBlack);
 
-            // Calculate rotation angle for the text
+            // Rotation for text - add 180 degrees if upside down
             float angle = std::atan2(dir.y, dir.x) * 180.0f / static_cast<float>(M_PI);
             if (angle > 90 || angle < -90)
                 angle += 180.0f;
-            // Display street name and length
-            sf::Font font;
-            if (!font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"))
-            {
-                std::cerr << "Failed to load font" << std::endl;
-            }
 
             sf::Text text(edge.streetName + " - " + std::to_string(edge.length) + " km", font, 12);
             text.setFillColor(sf::Color::Black);
 
-            // Calculate text position along the edge
+            // Position
             text.setPosition(start + dir * length / 2.0f);
-
-            // Adjust text origin to center it
             text.setOrigin(text.getLocalBounds().width / 2.0f, text.getLocalBounds().height / 2.0f);
-
-            // Rotate text to match the edge
             text.setRotation(angle);
 
             window.draw(text);
@@ -210,34 +196,34 @@ void popUp(sf::RenderWindow &window, bool showPopUp, sf::Vector2f &popUpPosition
         sf::Text accidentButton("Accident", font, 12);
         sf::Text constructionButton("Construction", font, 12);
 
-        // Set positions relative to the pop-up box
+        // Dimension based on popUpBox
         float buttonWidth = 0.9f * popUpBox.getSize().x;
         float buttonHeight = 0.25f * popUpBox.getSize().y;
 
         sf::FloatRect popUpBoxRect = popUpBox.getGlobalBounds();
 
         sf::RectangleShape patholeButtonShape(sf::Vector2f(buttonWidth, buttonHeight));
-        patholeButtonShape.setFillColor(sf::Color(144, 238, 144)); // Light green color
+        patholeButtonShape.setFillColor(sf::Color(144, 238, 144));
         patholeButtonShape.setOutlineColor(sf::Color::Black);
         patholeButtonShape.setOutlineThickness(1.5f);
         patholeButtonShape.setPosition(popUpPosition.x + 0.05f * popUpBox.getSize().x, popUpPosition.y + 0.05f * popUpBox.getSize().y);
 
         sf::RectangleShape accidentButtonShape(sf::Vector2f(buttonWidth, buttonHeight));
-        accidentButtonShape.setFillColor(sf::Color(144, 238, 144)); // Light green color
+        accidentButtonShape.setFillColor(sf::Color(144, 238, 144));
         accidentButtonShape.setOutlineColor(sf::Color::Black);
         accidentButtonShape.setOutlineThickness(1.5f);
         accidentButtonShape.setPosition(popUpPosition.x + 0.05f * popUpBox.getSize().x, popUpPosition.y + 0.35f * popUpBox.getSize().y);
 
         sf::RectangleShape constructionButtonShape(sf::Vector2f(buttonWidth, buttonHeight));
-        constructionButtonShape.setFillColor(sf::Color(144, 238, 144)); // Light green color
+        constructionButtonShape.setFillColor(sf::Color(144, 238, 144));
         constructionButtonShape.setOutlineColor(sf::Color::Black);
         constructionButtonShape.setOutlineThickness(1.5f);
         constructionButtonShape.setPosition(popUpPosition.x + 0.05f * popUpBox.getSize().x, popUpPosition.y + 0.65f * popUpBox.getSize().y);
 
-        // Set button text size and positions
-        patholeButton.setCharacterSize(static_cast<unsigned int>(buttonHeight * 0.4f));      // Adjust multiplier as needed
-        accidentButton.setCharacterSize(static_cast<unsigned int>(buttonHeight * 0.4f));     // Adjust multiplier as needed
-        constructionButton.setCharacterSize(static_cast<unsigned int>(buttonHeight * 0.4f)); // Adjust multiplier as needed
+        // Text size and positions
+        patholeButton.setCharacterSize(static_cast<unsigned int>(buttonHeight * 0.4f));
+        accidentButton.setCharacterSize(static_cast<unsigned int>(buttonHeight * 0.4f));
+        constructionButton.setCharacterSize(static_cast<unsigned int>(buttonHeight * 0.4f));
 
         patholeButton.setPosition(patholeButtonShape.getPosition().x + 0.5f * (buttonWidth - patholeButton.getLocalBounds().width),
                                   patholeButtonShape.getPosition().y + 0.5f * (buttonHeight - patholeButton.getLocalBounds().height));
@@ -251,7 +237,7 @@ void popUp(sf::RenderWindow &window, bool showPopUp, sf::Vector2f &popUpPosition
         window.draw(accidentButtonShape);
         window.draw(constructionButtonShape);
 
-        // Set button text color
+        // Text color
         patholeButton.setFillColor(sf::Color::Black);
         accidentButton.setFillColor(sf::Color::Black);
         constructionButton.setFillColor(sf::Color::Black);
@@ -260,7 +246,7 @@ void popUp(sf::RenderWindow &window, bool showPopUp, sf::Vector2f &popUpPosition
         window.draw(accidentButton);
         window.draw(constructionButton);
 
-        // Handle button clicks
+        // Button click logic
         if (sf::Mouse::isButtonPressed(sf::Mouse::Left))
         {
             sf::Vector2f mousePosition = window.mapPixelToCoords(sf::Mouse::getPosition(window));
@@ -270,17 +256,11 @@ void popUp(sf::RenderWindow &window, bool showPopUp, sf::Vector2f &popUpPosition
             sf::FloatRect constructionButtonRect = constructionButtonShape.getGlobalBounds();
 
             if (patholeButtonRect.contains(mousePosition))
-            {
                 sendRequest(sd, "hazard " + std::to_string(globalFrom) + " " + std::to_string(globalTo) + " pathole");
-            }
             else if (accidentButtonRect.contains(mousePosition))
-            {
                 sendRequest(sd, "hazard " + std::to_string(globalFrom) + " " + std::to_string(globalTo) + " accident");
-            }
             else if (constructionButtonRect.contains(mousePosition))
-            {
                 sendRequest(sd, "hazard " + std::to_string(globalFrom) + " " + std::to_string(globalTo) + " construction");
-            }
         }
     }
 }
@@ -386,7 +366,7 @@ void drawGraph(int sd, Graph &graph, std::atomic<bool> &stopThreads, std::condit
             {
                 if (event.mouseButton.button == sf::Mouse::Left)
                 {
-                    // Get the mouse position
+                    // Mouse position
                     sf::Vector2f mousePosition = window.mapPixelToCoords(sf::Mouse::getPosition(window));
 
                     // Check if the click is on an edge
@@ -399,35 +379,23 @@ void drawGraph(int sd, Graph &graph, std::atomic<bool> &stopThreads, std::condit
                     {
                         for (const Edge &edge : graph.getAdjacencyList(i))
                         {
-                            // Calculate center points for edges
                             sf::Vector2f start = nodePositions[i];
                             sf::Vector2f end = nodePositions[edge.destination];
 
-                            // Calculate normalized direction vector
                             sf::Vector2f dir = end - start;
                             float length = std::sqrt(dir.x * dir.x + dir.y * dir.y);
                             dir /= length;
-
-                            // Calculate perpendicular offset for thicker line
                             sf::Vector2f offset(-dir.y, dir.x);
-
-                            // Check if the click is near the edge
                             sf::Vector2f mouseToStart = mousePosition - start;
                             float projection = mouseToStart.x * dir.x + mouseToStart.y * dir.y;
 
                             sf::Vector2f closestPoint;
                             if (projection <= 0)
-                            {
                                 closestPoint = start;
-                            }
                             else if (projection >= length)
-                            {
                                 closestPoint = end;
-                            }
                             else
-                            {
                                 closestPoint = start + dir * projection;
-                            }
 
                             // Calculate distance from the mouse click to the edge
                             float distance = std::sqrt((mousePosition.x - closestPoint.x) * (mousePosition.x - closestPoint.x) +
@@ -457,9 +425,7 @@ void drawGraph(int sd, Graph &graph, std::atomic<bool> &stopThreads, std::condit
                         globalTo = closestEdgeTo;
                     }
                     else
-                    {
                         showPopUp = false;
-                    }
                 }
             }
             else if (inputActive && event.type == sf::Event::TextEntered)
